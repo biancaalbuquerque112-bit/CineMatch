@@ -16,7 +16,7 @@ public class Catalogo {
 
         filmes.add(new Filme(
             "Matrix", "Ficcao Cientifica", 1999,
-            "imagens/Matrix.jpg"
+            "imagens/matrix.jpg"
         ));
 
         filmes.add(new Filme(
@@ -55,7 +55,7 @@ public class Catalogo {
         ));
 
         filmes.add(new Filme(
-            "A noiva do Chucky", "Terror/Comédia", 1998,
+            "A noiva do Chucky", "Terror/Comedia", 1998,
             "imagens/AnoivadoChucky.jpg"
         ));
     }
