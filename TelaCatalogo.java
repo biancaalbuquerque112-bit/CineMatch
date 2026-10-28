@@ -167,9 +167,15 @@ public class TelaCatalogo extends JFrame {
             Component.CENTER_ALIGNMENT
         );
 
-        File arquivo = new File(
-            "src/" + filme.getCapa()
-        );
+        
+        File arquivo = new File(filme.getCapa());
+
+        System.out.println("Procurando imagem em: "
+            + arquivo.getAbsolutePath());
+
+        System.out.println("Arquivo encontrado? "
+            + arquivo.exists());
+
 
         if (arquivo.exists()) {
 
