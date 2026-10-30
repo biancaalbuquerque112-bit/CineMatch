@@ -157,6 +157,26 @@ public class TelaCatalogo extends JFrame {
         painelFilmes.repaint();
     }
 
+    private String mostrarEstrelas(int nota) {
+
+        if (nota == 0) {
+            return "Sem avaliação";
+        }
+
+        String estrelas = "";
+
+        for (int i = 1; i <=5; i++) {
+
+            if (i <= nota) {
+                estrelas += "★";
+            } else {
+                estrelas += "☆";
+            }
+        }
+
+        return estrelas;
+    }
+
     private JLabel criarImagem(Filme filme) {
 
         JLabel imagem = new JLabel();
@@ -251,11 +271,15 @@ public class TelaCatalogo extends JFrame {
         );
 
         JLabel nota = new JLabel(
-            filme.getNota() == 0
-                ? "Sem avaliacao"
-                : "Nota: " + filme.getNota() + "/5"
+            mostrarEstrelas(filme.getNota())
         );
-        nota.setForeground(Color.WHITE);
+
+        nota.setForeground(new Color(255, 215, 0));
+        
+        nota.setFont(
+            new Font("Segoe UI Symbol", Font.PLAIN, 20)
+        );
+
         nota.setAlignmentX(
             Component.CENTER_ALIGNMENT
         );
@@ -321,7 +345,7 @@ public class TelaCatalogo extends JFrame {
                 );
 
                 nota.setText(
-                    "Nota: " + filme.getNota() + "/5"
+                    mostrarEstrelas(filme.getNota())
                 );
             }
         });
