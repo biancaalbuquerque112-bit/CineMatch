@@ -1,568 +1,409 @@
-
 import java.awt.*;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
 public class TelaDescobrir extends JFrame {
-
-    private final Color FUNDO = new Color(18, 18, 30);
-    private final Color CARD = new Color(32, 32, 48);
-    private final Color ROSA = new Color(255, 75, 100);
-    private final Color CINZA = new Color(75, 75, 95);
-
+    private final Color FUNDO = new Color(17, 16, 30);
+    private final Color CARD = new Color(30, 27, 45);
+    private final Color ROSA = new Color(247, 48, 107);
+    private final Color TEXTO = new Color(244, 241, 249);
+    private final Color SUAVE = new Color(181, 174, 195);
+    private final Color BORDA = new Color(73, 47, 78);
     private final ArrayList<Filme> filmes;
     private final ArrayList<Filme> curtidos = new ArrayList<>();
     private final ArrayList<Filme> salvos = new ArrayList<>();
-
-    private final Map<String, String> comentarios =
-        new HashMap<>();
-
+    private final Map<String, String> comentarios = new HashMap<>();
     private int indiceAtual = 0;
-    private JPanel principal;
     private Filme filmeCurtido;
+    private JPanel principal;
 
     public TelaDescobrir() {
-
         filmes = new Catalogo().getFilmes();
-
         setTitle("CineMatch - Descobrir");
-        setSize(1050, 780);
-        setMinimumSize(new Dimension(800, 620));
+        setSize(1150, 820);
+        setMinimumSize(new Dimension(900, 650));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
         principal = new JPanel(new BorderLayout());
         principal.setBackground(FUNDO);
         setContentPane(principal);
-
         mostrarDescoberta();
         setVisible(true);
     }
 
-    private JLabel texto(String valor, int tamanho, Color cor) {
-        JLabel label = new JLabel(valor);
-        label.setFont(new Font("Arial", Font.BOLD, tamanho));
-        label.setForeground(cor);
-        return label;
+    private JLabel label(String valor, int tamanho, Color cor, boolean negrito) {
+        JLabel l = new JLabel(valor);
+        l.setFont(new Font("SansSerif", negrito ? Font.BOLD : Font.PLAIN, tamanho));
+        l.setForeground(cor);
+        return l;
     }
 
-    private JButton botao(String nome, Color cor) {
-        JButton b = new JButton(nome);
-        b.setBackground(cor);
+    private JPanel transparente(LayoutManager layout) {
+        JPanel p = new JPanel(layout);
+        p.setOpaque(false);
+        return p;
+    }
+
+    private class Cartao extends JPanel {
+        private final Color cor;
+        private final int raio;
+        Cartao(Color cor, int raio) {
+            this.cor = cor;
+            this.raio = raio;
+            setOpaque(false);
+        }
+        @Override protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(cor);
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, raio, raio);
+            g2.setColor(BORDA);
+            g2.setStroke(new BasicStroke(1.1f));
+            g2.drawRoundRect(0, 0, getWidth() - 2, getHeight() - 2, raio, raio);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    private JButton botao(String texto, Color cor) {
+        JButton b = new JButton(texto) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getModel().isRollover() ? cor.brighter() : cor);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 22, 22);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        b.setFont(new Font("SansSerif", Font.BOLD, 14));
         b.setForeground(Color.WHITE);
-        b.setFont(new Font("Arial", Font.BOLD, 14));
+        b.setContentAreaFilled(false);
         b.setFocusPainted(false);
-        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        b.setBorder(BorderFactory.createEmptyBorder(
-            12, 18, 12, 18
-        ));
+        b.setBorderPainted(false);
+        b.setOpaque(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setBorder(new EmptyBorder(10, 17, 10, 17));
         return b;
     }
 
-    private JLabel imagemFilme(
-            Filme filme, int largura, int altura) {
+    private JButton botaoCircular(String simbolo, Color fundo, Color contorno) {
+        JButton b = new JButton(simbolo) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int d = Math.min(getWidth(), getHeight()) - 7;
+                int x = (getWidth() - d) / 2;
+                int y = (getHeight() - d) / 2;
+                g2.setColor(getModel().isRollover() ? fundo.brighter() : fundo);
+                g2.fillOval(x, y, d, d);
+                g2.setColor(contorno);
+                g2.setStroke(new BasicStroke(2.3f));
+                g2.drawOval(x, y, d, d);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        b.setFont(new Font("SansSerif", Font.BOLD, 40));
+        b.setForeground(contorno);
+        b.setFocusPainted(false);
+        b.setContentAreaFilled(false);
+        b.setBorderPainted(false);
+        b.setOpaque(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setPreferredSize(new Dimension(88, 88));
+        return b;
+    }
 
-        JLabel imagem = new JLabel("Sem capa");
-        imagem.setForeground(Color.WHITE);
-        imagem.setHorizontalAlignment(SwingConstants.CENTER);
-        imagem.setPreferredSize(
-            new Dimension(largura, altura)
-        );
+    private File arquivoCapa(Filme filme) {
+        File direto = new File(filme.getCapa());
+        if (direto.isFile()) return direto;
+        File src = new File("src", filme.getCapa());
+        if (src.isFile()) return src;
+        return direto;
+    }
 
-        File arquivo = new File("src/" + filme.getCapa());
-
-        if (!arquivo.exists()) {
-            arquivo = new File(filme.getCapa());
-        }
-
-        if (arquivo.exists()) {
-
-            ImageIcon original = new ImageIcon(
-                arquivo.getAbsolutePath()
-            );
-
+    private JLabel capa(Filme filme, int largura, int altura) {
+        JLabel imagem = new JLabel("Capa indisponível", SwingConstants.CENTER);
+        imagem.setForeground(SUAVE);
+        imagem.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        imagem.setOpaque(true);
+        imagem.setBackground(new Color(38, 34, 56));
+        imagem.setPreferredSize(new Dimension(largura, altura));
+        imagem.setMinimumSize(new Dimension(largura, altura));
+        imagem.setMaximumSize(new Dimension(largura, altura));
+        File arquivo = arquivoCapa(filme);
+        if (arquivo.isFile()) {
+            ImageIcon original = new ImageIcon(arquivo.getAbsolutePath());
             if (original.getIconWidth() > 0) {
-
-                Image redimensionada = original.getImage()
-                    .getScaledInstance(
-                        largura, altura, Image.SCALE_SMOOTH
-                    );
-
+                Image img = original.getImage().getScaledInstance(largura, altura, Image.SCALE_SMOOTH);
+                imagem.setIcon(new ImageIcon(img));
                 imagem.setText("");
-                imagem.setIcon(
-                    new ImageIcon(redimensionada)
-                );
             }
         }
-
         return imagem;
     }
 
-    private void atualizarTela(JPanel conteudo) {
+    private void atualizar(JPanel tela) {
         principal.removeAll();
-        principal.add(conteudo, BorderLayout.CENTER);
+        principal.add(tela, BorderLayout.CENTER);
         principal.revalidate();
         principal.repaint();
     }
 
-    private JPanel cabecalho(String subtitulo) {
-
-        JPanel topo = new JPanel(new BorderLayout(15, 0));
-        topo.setBackground(FUNDO);
-        topo.setBorder(BorderFactory.createEmptyBorder(
-            10, 10, 20, 10
-        ));
-
-        JLabel logo = texto("CineMatch", 32, ROSA);
-        topo.add(logo, BorderLayout.WEST);
-
-        JPanel direita = new JPanel(
-            new FlowLayout(FlowLayout.RIGHT, 12, 0)
-        );
-        direita.setBackground(FUNDO);
-
-        JLabel descricao = texto(
-            subtitulo, 13, Color.LIGHT_GRAY
-        );
-
-        JButton voltar = botao("← Início", CINZA);
-
-        voltar.addActionListener(e -> {
-            new TelaInicial();
-            dispose();
+    private JPanel topo(boolean pessoas) {
+        JPanel barra = transparente(new BorderLayout(14, 8));
+        barra.setBorder(new EmptyBorder(13, 20, 14, 20));
+        JButton inicio = botao("⌂  Início", new Color(46, 41, 64));
+        inicio.addActionListener(e -> { new TelaInicial(); dispose(); });
+        barra.add(inicio, BorderLayout.WEST);
+        JPanel centro = transparente(new GridLayout(2, 1, 0, 3));
+        JLabel titulo = label(pessoas ? "♥  Pessoas que também curtiram" : "🎬  CineMatch", pessoas ? 25 : 34, pessoas ? TEXTO : ROSA, true);
+        titulo.setHorizontalAlignment(SwingConstants.CENTER);
+        JLabel sub = label(pessoas ? "Veja quem compartilha esse gosto com você" : "Descubra seu próximo filme favorito", 14, SUAVE, false);
+        sub.setHorizontalAlignment(SwingConstants.CENTER);
+        centro.add(titulo);
+        centro.add(sub);
+        barra.add(centro, BorderLayout.CENTER);
+        JButton acao = botao(pessoas ? "Continuar filmes  ›" : "Meu perfil  ♡", pessoas ? ROSA : new Color(46, 41, 64));
+        acao.addActionListener(e -> {
+            if (pessoas) mostrarDescoberta();
+            else new TelaMeuPerfil();
         });
+        barra.add(acao, BorderLayout.EAST);
+        return barra;
+    }
 
-        direita.add(descricao);
-        direita.add(voltar);
-
-        topo.add(direita, BorderLayout.EAST);
-
-        return topo;
+    private JPanel cardFilme(Filme filme, int largura, int alturaCapa, boolean compacto) {
+        Cartao card = new Cartao(CARD, 30);
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBorder(new EmptyBorder(10, 10, 12, 10));
+        JLabel imagem = capa(filme, largura, alturaCapa);
+        imagem.setAlignmentX(Component.CENTER_ALIGNMENT);
+        card.add(imagem);
+        card.add(Box.createVerticalStrut(9));
+        JLabel nome = label(filme.getTitulo(), compacto ? 19 : 22, TEXTO, true);
+        nome.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(nome);
+        card.add(Box.createVerticalStrut(4));
+        JLabel genero = label(filme.getGenero(), 13, SUAVE, false);
+        genero.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(genero);
+        if (!compacto) {
+            card.add(Box.createVerticalStrut(6));
+            JLabel contador = label(filme.getAno() + "    •    " + (indiceAtual + 1) + " / " + filmes.size(), 13, ROSA, true);
+            contador.setAlignmentX(Component.CENTER_ALIGNMENT);
+            card.add(contador);
+        }
+        return card;
     }
 
     private void mostrarDescoberta() {
-
-        JPanel tela = new JPanel(new BorderLayout());
+        JPanel tela = transparente(new BorderLayout(15, 15));
         tela.setBackground(FUNDO);
-        tela.setBorder(BorderFactory.createEmptyBorder(
-            20, 30, 20, 30
-        ));
-
-        tela.add(
-            cabecalho("Descubra seu próximo filme favorito"),
-            BorderLayout.NORTH
-        );
-
-        if (indiceAtual >= filmes.size()) {
-
-            JPanel centro = new JPanel(new GridBagLayout());
-            centro.setBackground(FUNDO);
-
-            JLabel mensagem = texto(
-                "Você descobriu todos os filmes!",
-                24, ROSA
-            );
-
-            centro.add(mensagem);
-            tela.add(centro, BorderLayout.CENTER);
-
-            JButton reiniciar = botao("Recomeçar", ROSA);
-
-            reiniciar.addActionListener(e -> {
-                indiceAtual = 0;
-                mostrarDescoberta();
-            });
-
-            tela.add(reiniciar, BorderLayout.SOUTH);
-            atualizarTela(tela);
+        tela.setOpaque(true);
+        tela.setBorder(new EmptyBorder(10, 24, 20, 24));
+        tela.add(topo(false), BorderLayout.NORTH);
+        if (filmes.isEmpty() || indiceAtual >= filmes.size()) {
+            JPanel fim = transparente(new GridBagLayout());
+            JPanel conteudo = transparente(new GridLayout(3, 1, 0, 18));
+            JLabel msg = label("Você descobriu todos os filmes! ♥", 24, TEXTO, true);
+            msg.setHorizontalAlignment(SwingConstants.CENTER);
+            conteudo.add(msg);
+            JButton reiniciar = botao("Recomeçar descoberta", ROSA);
+            reiniciar.addActionListener(e -> { indiceAtual = 0; mostrarDescoberta(); });
+            conteudo.add(reiniciar);
+            JButton voltar = botao("Voltar ao início", new Color(50, 45, 65));
+            voltar.addActionListener(e -> { new TelaInicial(); dispose(); });
+            conteudo.add(voltar);
+            fim.add(conteudo);
+            tela.add(fim, BorderLayout.CENTER);
+            atualizar(tela);
             return;
         }
+        Filme atual = filmes.get(indiceAtual);
+        JPanel palco = transparente(new GridBagLayout());
+        JPanel cartoes = transparente(new FlowLayout(FlowLayout.CENTER, 0, 8));
+        if (filmes.size() > 1) {
+            int anterior = (indiceAtual - 1 + filmes.size()) % filmes.size();
+            JLabel esquerda = capa(filmes.get(anterior), 145, 225);
+            esquerda.setBorder(BorderFactory.createLineBorder(BORDA, 2));
+            cartoes.add(esquerda);
+        }
+        JPanel central = cardFilme(atual, 280, 300, false);
+        cartoes.add(central);
+        if (filmes.size() > 2) {
+            int proximo = (indiceAtual + 1) % filmes.size();
+            JLabel direita = capa(filmes.get(proximo), 145, 225);
+            direita.setBorder(BorderFactory.createLineBorder(BORDA, 2));
+            cartoes.add(direita);
+        }
+        palco.add(cartoes);
+        JScrollPane rolagemPalco = new JScrollPane(palco);
+        rolagemPalco.setBorder(null);
+        rolagemPalco.setOpaque(false);
+        rolagemPalco.getViewport().setOpaque(false);
+        rolagemPalco.getVerticalScrollBar().setUnitIncrement(16);
+        tela.add(rolagemPalco, BorderLayout.CENTER);
 
-        Filme filme = filmes.get(indiceAtual);
-
-        JPanel centro = new JPanel(new GridBagLayout());
-        centro.setBackground(FUNDO);
-
-        JPanel card = new JPanel();
-        card.setBackground(CARD);
-        card.setLayout(
-            new BoxLayout(card, BoxLayout.Y_AXIS)
-        );
-        card.setBorder(BorderFactory.createEmptyBorder(
-            15, 20, 15, 20
-        ));
-
-        JLabel capa = imagemFilme(filme, 260, 350);
-        capa.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel titulo = texto(
-            filme.getTitulo(), 25, Color.WHITE
-        );
-        titulo.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel genero = texto(
-            filme.getGenero() + " • " + filme.getAno(),
-            14, Color.LIGHT_GRAY
-        );
-        genero.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel contador = texto(
-            (indiceAtual + 1) + " / " + filmes.size(),
-            13, ROSA
-        );
-        contador.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        card.add(capa);
-        card.add(Box.createVerticalStrut(15));
-        card.add(titulo);
-        card.add(Box.createVerticalStrut(8));
-        card.add(genero);
-        card.add(Box.createVerticalStrut(12));
-        card.add(contador);
-
-        centro.add(card);
-        tela.add(centro, BorderLayout.CENTER);
-
-        JPanel acoes = new JPanel(
-            new FlowLayout(FlowLayout.CENTER, 15, 10)
-        );
-        acoes.setBackground(FUNDO);
-
-        JButton passar = botao("✖ Passar", CINZA);
-        JButton salvar = botao(
-            "★ Salvar", new Color(190, 140, 45)
-        );
-        JButton curtir = botao("♥ Curtir", ROSA);
-        JButton comentar = botao(
-            "Comentar", new Color(110, 65, 120)
-        );
-
-        passar.addActionListener(e -> {
-            indiceAtual++;
-            mostrarDescoberta();
-        });
-
-        salvar.addActionListener(e -> {
-            if (!salvos.contains(filme)) {
-                salvos.add(filme);
-            }
-            indiceAtual++;
-            mostrarDescoberta();
-        });
-
-        curtir.addActionListener(e -> {
-            if (!curtidos.contains(filme)) {
-                curtidos.add(filme);
-            }
-            filmeCurtido = filme;
+        JPanel acoes = transparente(new FlowLayout(FlowLayout.CENTER, 32, 0));
+        acoes.add(acaoCircular("✕", "Passar", new Color(37, 31, 50), ROSA, () -> {
+            indiceAtual++; mostrarDescoberta();
+        }));
+        acoes.add(acaoCircular("★", "Salvar", new Color(37, 31, 50), new Color(255, 185, 76), () -> {
+            if (!salvos.contains(atual)) salvos.add(atual);
+            indiceAtual++; mostrarDescoberta();
+        }));
+        acoes.add(acaoCircular("♥", "Curtir", ROSA, Color.WHITE, () -> {
+            if (!curtidos.contains(atual)) curtidos.add(atual);
+            filmeCurtido = atual;
             indiceAtual++;
             mostrarPessoas();
-        });
-
-        comentar.addActionListener(e -> {
-            comentarFilme(filme, false);
-        });
-
-        acoes.add(passar);
-        acoes.add(salvar);
-        acoes.add(curtir);
-        acoes.add(comentar);
-
-        tela.add(acoes, BorderLayout.SOUTH);
-        atualizarTela(tela);
+        }));
+        JPanel rodape = transparente(new BorderLayout());
+        rodape.add(acoes, BorderLayout.CENTER);
+        JButton comentar = botao("✎  Comentar sobre este filme", new Color(48, 37, 63));
+        comentar.addActionListener(e -> comentarFilme(atual, false));
+        JPanel linha = transparente(new FlowLayout(FlowLayout.CENTER));
+        linha.add(comentar);
+        rodape.add(linha, BorderLayout.SOUTH);
+        tela.add(rodape, BorderLayout.SOUTH);
+        atualizar(tela);
     }
 
-    private void comentarFilme(
-            Filme filme, boolean voltarPessoas) {
+    private JPanel acaoCircular(String simbolo, String nome, Color fundo, Color contorno, Runnable acao) {
+        JPanel p = transparente(new BorderLayout(0, 5));
+        JButton b = botaoCircular(simbolo, fundo, contorno);
+        b.addActionListener(e -> acao.run());
+        p.add(b, BorderLayout.CENTER);
+        JLabel legenda = label(nome, 15, TEXTO, false);
+        legenda.setHorizontalAlignment(SwingConstants.CENTER);
+        p.add(legenda, BorderLayout.SOUTH);
+        return p;
+    }
 
-        JPanel tela = new JPanel(new BorderLayout(20, 20));
+    private void comentarFilme(Filme filme, boolean voltarPessoas) {
+        JPanel tela = transparente(new BorderLayout(20, 20));
+        tela.setOpaque(true);
         tela.setBackground(FUNDO);
-        tela.setBorder(BorderFactory.createEmptyBorder(
-            25, 40, 25, 40
-        ));
-
-        tela.add(
-            cabecalho("Seu comentário sobre o filme"),
-            BorderLayout.NORTH
-        );
-
-        JPanel centro = new JPanel(new BorderLayout(25, 0));
-        centro.setBackground(FUNDO);
-
-        centro.add(
-            imagemFilme(filme, 220, 310),
-            BorderLayout.WEST
-        );
-
-        JPanel editor = new JPanel();
-        editor.setBackground(CARD);
-        editor.setLayout(
-            new BoxLayout(editor, BoxLayout.Y_AXIS)
-        );
-        editor.setBorder(BorderFactory.createEmptyBorder(
-            25, 25, 25, 25
-        ));
-
-        JLabel titulo = texto(
-            "Por que você gosta de " + filme.getTitulo() + "?",
-            20, Color.WHITE
-        );
-        titulo.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JTextArea campo = new JTextArea(8, 30);
-        campo.setText(
-            comentarios.getOrDefault(filme.getTitulo(), "")
-        );
+        tela.setBorder(new EmptyBorder(20, 40, 30, 40));
+        tela.add(topo(voltarPessoas), BorderLayout.NORTH);
+        JPanel conteudo = transparente(new BorderLayout(25, 0));
+        conteudo.add(capa(filme, 230, 330), BorderLayout.WEST);
+        Cartao editor = new Cartao(CARD, 26);
+        editor.setLayout(new BorderLayout(0, 15));
+        editor.setBorder(new EmptyBorder(25, 25, 25, 25));
+        editor.add(label("Por que você gosta de " + filme.getTitulo() + "?", 20, TEXTO, true), BorderLayout.NORTH);
+        JTextArea campo = new JTextArea(comentarios.getOrDefault(filme.getTitulo(), ""));
         campo.setLineWrap(true);
         campo.setWrapStyleWord(true);
-        campo.setFont(new Font("Arial", Font.PLAIN, 16));
-        campo.setForeground(Color.WHITE);
-        campo.setBackground(new Color(45, 45, 65));
-        campo.setCaretColor(Color.WHITE);
-        campo.setBorder(BorderFactory.createEmptyBorder(
-            15, 15, 15, 15
-        ));
-
-        JScrollPane rolagem = new JScrollPane(campo);
-        rolagem.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        editor.add(titulo);
-        editor.add(Box.createVerticalStrut(20));
-        editor.add(rolagem);
-
-        centro.add(editor, BorderLayout.CENTER);
-        tela.add(centro, BorderLayout.CENTER);
-
-        JPanel botoes = new JPanel(
-            new FlowLayout(FlowLayout.RIGHT, 12, 5)
-        );
-        botoes.setBackground(FUNDO);
-
-        JButton cancelar = botao("Cancelar", CINZA);
-        JButton salvar = botao("Salvar comentário", ROSA);
-
-        Runnable voltar = () -> {
-            if (voltarPessoas) {
-                mostrarPessoas();
-            } else {
-                mostrarDescoberta();
-            }
-        };
-
+        campo.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        campo.setForeground(TEXTO);
+        campo.setCaretColor(TEXTO);
+        campo.setBackground(new Color(42, 37, 57));
+        campo.setBorder(new EmptyBorder(15, 15, 15, 15));
+        editor.add(new JScrollPane(campo), BorderLayout.CENTER);
+        conteudo.add(editor, BorderLayout.CENTER);
+        tela.add(conteudo, BorderLayout.CENTER);
+        JPanel botoes = transparente(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        Runnable voltar = () -> { if (voltarPessoas) mostrarPessoas(); else mostrarDescoberta(); };
+        JButton cancelar = botao("Cancelar", new Color(55, 48, 72));
         cancelar.addActionListener(e -> voltar.run());
-
+        JButton salvar = botao("Salvar comentário  ♥", ROSA);
         salvar.addActionListener(e -> {
             String comentario = campo.getText().trim();
-
-            if (comentario.isEmpty()) {
-                comentarios.remove(filme.getTitulo());
-            } else {
-                comentarios.put(
-                    filme.getTitulo(), comentario
-                );
-            }
-
+            if (comentario.isEmpty()) comentarios.remove(filme.getTitulo());
+            else comentarios.put(filme.getTitulo(), comentario);
             voltar.run();
         });
-
         botoes.add(cancelar);
         botoes.add(salvar);
-
         tela.add(botoes, BorderLayout.SOUTH);
-        atualizarTela(tela);
+        atualizar(tela);
     }
 
     private void mostrarPessoas() {
-
-        JPanel tela = new JPanel(new BorderLayout(20, 20));
+        if (filmeCurtido == null) { mostrarDescoberta(); return; }
+        JPanel tela = transparente(new BorderLayout(18, 18));
+        tela.setOpaque(true);
         tela.setBackground(FUNDO);
-        tela.setBorder(BorderFactory.createEmptyBorder(
-            20, 30, 20, 30
-        ));
+        tela.setBorder(new EmptyBorder(10, 22, 22, 22));
+        tela.add(topo(true), BorderLayout.NORTH);
+        JPanel conteudo = transparente(new BorderLayout(20, 0));
+        JPanel esquerda = transparente(new BorderLayout(0, 14));
+        esquerda.setPreferredSize(new Dimension(300, 0));
+        JPanel filme = cardFilme(filmeCurtido, 250, 330, true);
+        esquerda.add(filme, BorderLayout.NORTH);
+        Cartao comentario = new Cartao(CARD, 24);
+        comentario.setLayout(new BorderLayout(0, 12));
+        comentario.setBorder(new EmptyBorder(18, 18, 18, 18));
+        comentario.add(label("❝  Seu comentário", 15, ROSA, true), BorderLayout.NORTH);
+        JTextArea resumo = new JTextArea(comentarios.getOrDefault(filmeCurtido.getTitulo(), "Escreva o que você achou deste filme..."));
+        resumo.setLineWrap(true);
+        resumo.setWrapStyleWord(true);
+        resumo.setEditable(false);
+        resumo.setOpaque(false);
+        resumo.setForeground(SUAVE);
+        resumo.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        resumo.setRows(3);
+        comentario.add(resumo, BorderLayout.CENTER);
+        JButton editar = botao("✎  Escrever / editar", new Color(55, 39, 70));
+        editar.addActionListener(e -> comentarFilme(filmeCurtido, true));
+        comentario.add(editar, BorderLayout.SOUTH);
+        esquerda.add(comentario, BorderLayout.CENTER);
+        conteudo.add(esquerda, BorderLayout.WEST);
 
-        tela.add(
-            cabecalho("Pessoas que também curtiram"),
-            BorderLayout.NORTH
-        );
-
-        JPanel conteudo = new JPanel(
-            new BorderLayout(25, 0)
-        );
-        conteudo.setBackground(FUNDO);
-
-        JPanel painelFilme = new JPanel();
-        painelFilme.setBackground(CARD);
-        painelFilme.setLayout(
-            new BoxLayout(painelFilme, BoxLayout.Y_AXIS)
-        );
-        painelFilme.setBorder(BorderFactory.createEmptyBorder(
-            15, 15, 15, 15
-        ));
-
-        JLabel capa = imagemFilme(
-            filmeCurtido, 220, 310
-        );
-        capa.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel titulo = texto(
-            filmeCurtido.getTitulo(), 22, Color.WHITE
-        );
-        titulo.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        painelFilme.add(capa);
-        painelFilme.add(Box.createVerticalStrut(15));
-        painelFilme.add(titulo);
-        painelFilme.add(Box.createVerticalStrut(15));
-
-        String comentario = comentarios.getOrDefault(
-            filmeCurtido.getTitulo(), ""
-        );
-
-        if (!comentario.isEmpty()) {
-            JTextArea meuComentario = new JTextArea(
-                comentario
-            );
-            meuComentario.setLineWrap(true);
-            meuComentario.setWrapStyleWord(true);
-            meuComentario.setEditable(false);
-            meuComentario.setBackground(CARD);
-            meuComentario.setForeground(Color.LIGHT_GRAY);
-            meuComentario.setFont(
-                new Font("Arial", Font.ITALIC, 13)
-            );
-            meuComentario.setMaximumSize(
-                new Dimension(220, 90)
-            );
-            painelFilme.add(meuComentario);
-        }
-
-        JButton editar = botao(
-            "Editar meu comentário",
-            new Color(110, 65, 120)
-        );
-        editar.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        editar.addActionListener(e ->
-            comentarFilme(filmeCurtido, true)
-        );
-
-        painelFilme.add(Box.createVerticalStrut(15));
-        painelFilme.add(editar);
-
-        conteudo.add(painelFilme, BorderLayout.WEST);
-
-        JPanel lista = new JPanel();
-        lista.setBackground(FUNDO);
-        lista.setLayout(
-            new BoxLayout(lista, BoxLayout.Y_AXIS)
-        );
-
-        lista.add(criarPerfil(
-            "Marina, 25",
-            "Amizades e relacionamento",
-            "A história desse filme é incrível!"
-        ));
-
-        lista.add(criarPerfil(
-            "Lucas, 27",
-            "Amizades",
-            "Adoro a trilha sonora!"
-        ));
-
-        lista.add(criarPerfil(
-            "Camila, 24",
-            "Relacionamento",
-            "Um dos meus filmes favoritos!"
-        ));
-
-        lista.add(criarPerfil(
-            "Rafael, 26",
-            "Amizades e relacionamento",
-            "Assisti várias vezes!"
-        ));
-
-        JScrollPane rolagem = new JScrollPane(lista);
+        JPanel grade = transparente(new GridLayout(0, 2, 12, 12));
+        grade.setBorder(new EmptyBorder(2, 2, 2, 8));
+        grade.add(cardPessoa("Marina, 25", "Amizades e relacionamento", "Fantasia • Animação", "Coraline me marcou muito pela atmosfera única!"));
+        grade.add(cardPessoa("Lucas, 27", "Amizades", "Animação • Terror", "A estética e a história são surreais, amo!"));
+        grade.add(cardPessoa("Camila, 24", "Relacionamento", "Fantasia • Drama", "Um dos meus filmes favoritos da vida!"));
+        grade.add(cardPessoa("Rafael, 26", "Amizades e relacionamento", "Animação • Aventura", "A trilha sonora é perfeita!"));
+        grade.add(cardPessoa("Beatriz, 23", "Amizades", "Fantasia • Mistério", "A Coraline é muito inspiradora!"));
+        grade.add(cardPessoa("Thiago, 28", "Relacionamento", "Animação • Suspense", "Esse filme tem uma atmosfera incrível!"));
+        JScrollPane rolagem = new JScrollPane(grade);
         rolagem.setBorder(null);
-        rolagem.getVerticalScrollBar()
-            .setUnitIncrement(16);
-
+        rolagem.getViewport().setOpaque(false);
+        rolagem.setOpaque(false);
+        rolagem.getVerticalScrollBar().setUnitIncrement(20);
+        rolagem.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
         conteudo.add(rolagem, BorderLayout.CENTER);
         tela.add(conteudo, BorderLayout.CENTER);
-
-        JButton continuar = botao(
-            "Continuar descobrindo filmes →", ROSA
-        );
-
-        continuar.addActionListener(e ->
-            mostrarDescoberta()
-        );
-
-        tela.add(continuar, BorderLayout.SOUTH);
-        atualizarTela(tela);
+        atualizar(tela);
     }
 
-    private JPanel criarPerfil(
-            String nome,
-            String interesse,
-            String comentario) {
-
-        JPanel perfil = new JPanel(
-            new BorderLayout(10, 10)
-        );
-        perfil.setBackground(CARD);
-        perfil.setBorder(BorderFactory.createEmptyBorder(
-            18, 18, 18, 18
-        ));
-        perfil.setMaximumSize(
-            new Dimension(Integer.MAX_VALUE, 135)
-        );
-
-        JPanel informacoes = new JPanel();
-        informacoes.setBackground(CARD);
-        informacoes.setLayout(
-            new BoxLayout(informacoes, BoxLayout.Y_AXIS)
-        );
-
-        informacoes.add(texto(
-            nome, 18, Color.WHITE
-        ));
-        informacoes.add(Box.createVerticalStrut(5));
-        informacoes.add(texto(
-            interesse, 12, Color.LIGHT_GRAY
-        ));
-        informacoes.add(Box.createVerticalStrut(8));
-        informacoes.add(texto(
-            "\"" + comentario + "\"", 12, ROSA
-        ));
-
-        JButton verPerfil = botao(
-            "Ver perfil", ROSA
-        );
-
-        verPerfil.addActionListener(e -> {
-            new TelaPerfilPessoa(
-                nome,
-                interesse,
-                comentario,
-                filmeCurtido.getTitulo()
-            );
-        });
-
-        perfil.add(informacoes, BorderLayout.CENTER);
-        perfil.add(verPerfil, BorderLayout.EAST);
-
-        JPanel espaco = new JPanel(
-            new BorderLayout()
-        );
-        espaco.setBackground(FUNDO);
-        espaco.setBorder(BorderFactory.createEmptyBorder(
-            0, 0, 12, 0
-        ));
-        espaco.add(perfil);
-
-        return espaco;
+    private JPanel cardPessoa(String nome, String interesse, String generos, String frase) {
+        Cartao card = new Cartao(CARD, 26);
+        card.setLayout(new BorderLayout(0, 12));
+        card.setBorder(new EmptyBorder(16, 16, 16, 16));
+        JPanel cab = transparente(new BorderLayout(10, 0));
+        JLabel avatar = new JLabel("●", SwingConstants.CENTER);
+        avatar.setForeground(ROSA);
+        avatar.setFont(new Font("SansSerif", Font.BOLD, 48));
+        avatar.setPreferredSize(new Dimension(62, 65));
+        cab.add(avatar, BorderLayout.WEST);
+        JPanel dados = transparente(new GridLayout(2, 1, 0, 3));
+        dados.add(label(nome, 17, TEXTO, true));
+        dados.add(label(interesse, 11, SUAVE, false));
+        cab.add(dados, BorderLayout.CENTER);
+        card.add(cab, BorderLayout.NORTH);
+        JPanel centro = transparente(new BorderLayout(0, 10));
+        centro.add(label(generos, 12, ROSA, true), BorderLayout.NORTH);
+        JTextArea citacao = new JTextArea("❝  " + frase);
+        citacao.setEditable(false);
+        citacao.setLineWrap(true);
+        citacao.setWrapStyleWord(true);
+        citacao.setOpaque(false);
+        citacao.setForeground(SUAVE);
+        citacao.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        centro.add(citacao, BorderLayout.CENTER);
+        card.add(centro, BorderLayout.CENTER);
+        JButton ver = botao("♙  Ver perfil", ROSA);
+        ver.addActionListener(e -> new TelaPerfilPessoa(nome, interesse, frase, filmeCurtido.getTitulo()));
+        card.add(ver, BorderLayout.SOUTH);
+        card.setPreferredSize(new Dimension(235, 220));
+        return card;
     }
 }
