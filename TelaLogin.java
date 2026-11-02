@@ -1,4 +1,3 @@
-
 import java.awt.*;
 import javax.swing.*;
 
@@ -13,7 +12,7 @@ public class TelaLogin extends JFrame {
     public TelaLogin() {
 
         setTitle("CineMatch - Login");
-        setSize(500, 550);
+        setSize(500, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
@@ -22,7 +21,7 @@ public class TelaLogin extends JFrame {
         painel.setBackground(FUNDO);
         painel.setLayout(new BoxLayout(painel, BoxLayout.Y_AXIS));
         painel.setBorder(
-            BorderFactory.createEmptyBorder(45, 65, 45, 65)
+            BorderFactory.createEmptyBorder(35, 65, 35, 65)
         );
 
         JLabel titulo = new JLabel("CineMatch");
@@ -40,35 +39,52 @@ public class TelaLogin extends JFrame {
         configurarCampo(campoEmail);
         configurarCampo(campoSenha);
 
+        // Funcionalidade de mostrar/ocultar senha
+        JCheckBox mostrarSenha = new JCheckBox("👁 Mostrar senha");
+        mostrarSenha.setForeground(Color.WHITE);
+        mostrarSenha.setBackground(FUNDO);
+        mostrarSenha.setFocusPainted(false);
+        mostrarSenha.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        char caractereOriginal = campoSenha.getEchoChar();
+
+        mostrarSenha.addActionListener(e -> {
+            if (mostrarSenha.isSelected()) {
+                campoSenha.setEchoChar((char) 0);
+                mostrarSenha.setText("🙈 Ocultar senha");
+            } else {
+                campoSenha.setEchoChar(caractereOriginal);
+                mostrarSenha.setText("👁 Mostrar senha");
+            }
+        });
+
         JButton entrar = criarBotao("Entrar", ROSA);
         JButton cadastrar = criarBotao(
             "Criar Conta", new Color(65, 65, 80)
         );
 
         painel.add(titulo);
-        painel.add(Box.createVerticalStrut(12));
+        painel.add(Box.createVerticalStrut(10));
         painel.add(subtitulo);
-        painel.add(Box.createVerticalStrut(45));
+        painel.add(Box.createVerticalStrut(35));
 
         painel.add(criarLabel("E-mail"));
         painel.add(Box.createVerticalStrut(8));
         painel.add(campoEmail);
-        painel.add(Box.createVerticalStrut(20));
+        painel.add(Box.createVerticalStrut(15));
 
         painel.add(criarLabel("Senha"));
         painel.add(Box.createVerticalStrut(8));
-        
         painel.add(campoSenha);
         painel.add(Box.createVerticalStrut(8));
+        painel.add(mostrarSenha);
         painel.add(Box.createVerticalStrut(20));
 
-
         painel.add(entrar);
-        painel.add(Box.createVerticalStrut(12));
+        painel.add(Box.createVerticalStrut(10));
         painel.add(cadastrar);
 
         entrar.addActionListener(e -> fazerLogin());
-
         cadastrar.addActionListener(e -> criarConta());
 
         add(painel);
@@ -170,26 +186,6 @@ public class TelaLogin extends JFrame {
 
                 campoEmail.setText(email.getText().trim());
                 campoSenha.setText("");
-                
-JCheckBox mostrarSenha = new JCheckBox("👁 Mostrar senha");
-
-mostrarSenha.setForeground(Color.WHITE);
-mostrarSenha.setBackground(FUNDO);
-mostrarSenha.setFocusPainted(false);
-mostrarSenha.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-char caractereOriginal = campoSenha.getEchoChar();
-
-mostrarSenha.addActionListener(e -> {
-if (mostrarSenha.isSelected()) {
-    campoSenha.setEchoChar((char) 0);
-    mostrarSenha.setText("🙈 Ocultar senha");
-    } else {
-    campoSenha.setEchoChar(caractereOriginal);
-    mostrarSenha.setText("👁 Mostrar senha");
-    }
-});
-
 
             } else {
 
