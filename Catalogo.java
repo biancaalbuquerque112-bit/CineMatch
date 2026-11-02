@@ -1,5 +1,6 @@
-
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class Catalogo {
 
@@ -62,5 +63,38 @@ public class Catalogo {
 
     public ArrayList<Filme> getFilmes() {
         return new ArrayList<>(filmes);
+    }
+
+    // --- NOVOS MÉTODOS DE BUSCA E ORDENAÇÃO ---
+
+    public void adicionarFilme(Filme filme) {
+        if (filme != null && !filmes.contains(filme)) {
+            filmes.add(filme);
+        }
+    }
+
+    public Filme buscarPorTitulo(String titulo) {
+        for (Filme f : filmes) {
+            if (f.getTitulo().equalsIgnoreCase(titulo)) {
+                return f;
+            }
+        }
+        return null;
+    }
+
+    public List<Filme> buscarPorGenero(String genero) {
+        List<Filme> resultado = new ArrayList<>();
+        for (Filme f : filmes) {
+            if (f.getGenero().equalsIgnoreCase(genero)) {
+                resultado.add(f);
+            }
+        }
+        return resultado;
+    }
+
+    public List<Filme> getFilmesOrdenadosPorTitulo() {
+        List<Filme> listaOrdenada = new ArrayList<>(filmes);
+        Collections.sort(listaOrdenada);
+        return listaOrdenada;
     }
 }
