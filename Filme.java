@@ -1,5 +1,4 @@
-
-public class Filme {
+public class Filme implements Comparable<Filme> {
 
     private String titulo;
     private String genero;
@@ -9,9 +8,7 @@ public class Filme {
     private int rejeicoes;
     private int nota;
 
-    public Filme(String titulo, String genero,
-                 int ano, String capa) {
-
+    public Filme(String titulo, String genero, int ano, String capa) {
         this.titulo = titulo;
         this.genero = genero;
         this.ano = ano;
@@ -61,5 +58,30 @@ public class Filme {
         if (nota >= 1 && nota <= 5) {
             this.nota = nota;
         }
+    }
+
+    // --- CONCEITOS DE POO ADICIONADOS ---
+
+    @Override
+    public String toString() {
+        return titulo + " (" + ano + ") - Gênero: " + genero + " | Nota: " + nota;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Filme outro = (Filme) obj;
+        return ano == outro.ano && titulo.equalsIgnoreCase(outro.titulo);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(titulo.toLowerCase(), ano);
+    }
+
+    @Override
+    public int compareTo(Filme outroFilme) {
+        return this.titulo.compareToIgnoreCase(outroFilme.getTitulo());
     }
 }
