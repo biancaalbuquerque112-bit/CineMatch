@@ -1,5 +1,8 @@
 
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.util.ArrayList;
 import javax.swing.*;
@@ -8,9 +11,30 @@ import javax.swing.event.DocumentListener;
 
 public class TelaCatalogo extends JFrame {
 
-    private final Color FUNDO = new Color(18, 18, 30);
-    private final Color CARD = new Color(32, 32, 48);
-    private final Color ROSA = new Color(255, 75, 100);
+    // Cores oficiais do CineMatch
+    private final Color FUNDO = new Color(43, 22, 70);
+    private final Color CARD = new Color(56, 32, 82);
+    private final Color CORAL = new Color(255, 98, 92);
+    private final Color ROXO_BOTAO = new Color(65, 37, 93);
+    private final Color BRANCO = new Color(247, 243, 250);
+    private final Color TEXTO_SUAVE = new Color(220, 204, 232);
+    private final Color DOURADO = new Color(255, 205, 60);
+
+    // Fontes do aplicativo
+    private final Font FONTE_LOGO =
+            new Font("Nimbus Sans", Font.BOLD, 28);
+
+    private final Font FONTE_TITULO =
+            new Font("Times New Roman", Font.BOLD, 22);
+
+    private final Font FONTE_TEXTO =
+            new Font("Times New Roman", Font.PLAIN, 19);
+
+    private final Font FONTE_BOTAO =
+            new Font("Times New Roman", Font.BOLD, 18);
+
+    private final Font FONTE_DIRETOR =
+            new Font("Times New Roman", Font.PLAIN, 17);
 
     private ArrayList<Filme> filmes;
     private JPanel painelFilmes;
@@ -18,7 +42,7 @@ public class TelaCatalogo extends JFrame {
 
     public TelaCatalogo() {
 
-        setTitle("CineMatch - Catalogo");
+        setTitle("CineMatch - Catálogo");
         setSize(1100, 750);
         setMinimumSize(new Dimension(850, 600));
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -28,21 +52,23 @@ public class TelaCatalogo extends JFrame {
         filmes = catalogo.getFilmes();
 
         JPanel principal = new JPanel(
-            new BorderLayout(15, 15)
+                new BorderLayout(15, 15)
         );
 
         principal.setBackground(FUNDO);
         principal.setBorder(
-            BorderFactory.createEmptyBorder(20, 25, 20, 25)
+                BorderFactory.createEmptyBorder(20, 25, 20, 25)
         );
 
+        // Cabeçalho do catálogo
         JPanel cabecalho = new JPanel(
-            new BorderLayout(15, 10)
+                new BorderLayout(15, 10)
         );
+
         cabecalho.setBackground(FUNDO);
 
         JButton voltar = criarBotao(
-            "← Voltar", new Color(65, 65, 80)
+                "Voltar", ROXO_BOTAO
         );
 
         voltar.addActionListener(e -> {
@@ -51,40 +77,38 @@ public class TelaCatalogo extends JFrame {
         });
 
         JLabel titulo = new JLabel("CineMatch - Filmes");
-        titulo.setFont(
-            new Font("Arial", Font.BOLD, 28)
-        );
-        titulo.setForeground(ROSA);
+        titulo.setFont(FONTE_LOGO);
+        titulo.setForeground(BRANCO);
 
         JPanel esquerda = new JPanel(
-            new FlowLayout(FlowLayout.LEFT, 15, 0)
+                new FlowLayout(FlowLayout.LEFT, 15, 0)
         );
+
         esquerda.setBackground(FUNDO);
         esquerda.add(voltar);
         esquerda.add(titulo);
 
-        campoPesquisa = new JTextField(18);
-        campoPesquisa.setFont(
-            new Font("Arial", Font.PLAIN, 16)
-        );
-        campoPesquisa.setToolTipText(
-            "Pesquise por titulo ou genero"
-        );
+        // Barra de pesquisa com lupa
+        JPanel barraPesquisa = criarBarraPesquisa();
 
         cabecalho.add(esquerda, BorderLayout.WEST);
-        cabecalho.add(campoPesquisa, BorderLayout.EAST);
+        cabecalho.add(barraPesquisa, BorderLayout.EAST);
 
         principal.add(cabecalho, BorderLayout.NORTH);
 
+        // Grade com três colunas
         painelFilmes = new JPanel(
-            new GridLayout(0, 3, 18, 18)
+                new GridLayout(0, 3, 18, 18)
         );
+
         painelFilmes.setBackground(FUNDO);
 
-        JScrollPane rolagem = new JScrollPane(
-            painelFilmes
-        );
+        JScrollPane rolagem = new JScrollPane(painelFilmes);
+
         rolagem.setBorder(null);
+        rolagem.setBackground(FUNDO);
+        rolagem.getViewport().setBackground(FUNDO);
+
         rolagem.getVerticalScrollBar()
                 .setUnitIncrement(18);
 
@@ -94,46 +118,234 @@ public class TelaCatalogo extends JFrame {
 
         mostrarFilmes("");
 
+        // Pesquisa em tempo real
         campoPesquisa.getDocument().addDocumentListener(
-            new DocumentListener() {
+                new DocumentListener() {
 
-                public void insertUpdate(DocumentEvent e) {
-                    pesquisar();
-                }
+                    public void insertUpdate(DocumentEvent e) {
+                        pesquisar();
+                    }
 
-                public void removeUpdate(DocumentEvent e) {
-                    pesquisar();
-                }
+                    public void removeUpdate(DocumentEvent e) {
+                        pesquisar();
+                    }
 
-                public void changedUpdate(DocumentEvent e) {
-                    pesquisar();
+                    public void changedUpdate(DocumentEvent e) {
+                        pesquisar();
+                    }
                 }
-            }
         );
 
         setVisible(true);
     }
 
-    private JButton criarBotao(
-            String texto, Color cor) {
+    // Barra de pesquisa arredondada
+    private JPanel criarBarraPesquisa() {
 
-        JButton botao = new JButton(texto);
+        JPanel barra = new JPanel(
+                new BorderLayout(10, 0)
+        ) {
 
-        botao.setFont(
-            new Font("Arial", Font.BOLD, 13)
+            @Override
+            protected void paintComponent(Graphics g) {
+
+                super.paintComponent(g);
+
+                Graphics2D desenho =
+                        (Graphics2D) g.create();
+
+                desenho.setRenderingHint(
+                        RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON
+                );
+
+                desenho.setColor(BRANCO);
+
+                desenho.fillRoundRect(
+                        0, 0,
+                        getWidth() - 1,
+                        getHeight() - 1,
+                        24, 24
+                );
+
+                desenho.dispose();
+            }
+        };
+
+        barra.setOpaque(false);
+        barra.setPreferredSize(new Dimension(300, 46));
+
+        barra.setBorder(
+                BorderFactory.createEmptyBorder(5, 12, 5, 12)
         );
+
+        // Ícone de lupa desenhado
+        JLabel lupa = new JLabel() {
+
+            @Override
+            protected void paintComponent(Graphics g) {
+
+                super.paintComponent(g);
+
+                Graphics2D desenho =
+                        (Graphics2D) g.create();
+
+                desenho.setRenderingHint(
+                        RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON
+                );
+
+                desenho.setColor(new Color(90, 72, 110));
+                desenho.setStroke(new BasicStroke(2.5f));
+
+                desenho.drawOval(3, 3, 13, 13);
+                desenho.drawLine(15, 15, 22, 22);
+
+                desenho.dispose();
+            }
+        };
+
+        lupa.setPreferredSize(new Dimension(25, 25));
+
+        campoPesquisa = new JTextField();
+
+        campoPesquisa.setFont(FONTE_TEXTO);
+        campoPesquisa.setBorder(null);
+        campoPesquisa.setOpaque(false);
+        campoPesquisa.setForeground(FUNDO);
+        campoPesquisa.setCaretColor(FUNDO);
+
+        campoPesquisa.setToolTipText(
+                "Pesquisar filmes ou gêneros"
+        );
+
+        barra.add(lupa, BorderLayout.WEST);
+        barra.add(campoPesquisa, BorderLayout.CENTER);
+
+        // Texto de orientação na pesquisa
+        campoPesquisa.setText(
+                "Pesquisar filmes ou gêneros..."
+        );
+
+        campoPesquisa.setForeground(
+                new Color(130, 120, 140)
+        );
+
+        campoPesquisa.addFocusListener(
+                new java.awt.event.FocusAdapter() {
+
+                    @Override
+                    public void focusGained(
+                            java.awt.event.FocusEvent e) {
+
+                        if (campoPesquisa.getText().equals(
+                                "Pesquisar filmes ou gêneros...")) {
+
+                            campoPesquisa.setText("");
+                            campoPesquisa.setForeground(FUNDO);
+                        }
+                    }
+
+                    @Override
+                    public void focusLost(
+                            java.awt.event.FocusEvent e) {
+
+                        if (campoPesquisa.getText().trim().isEmpty()) {
+
+                            campoPesquisa.setText(
+                                    "Pesquisar filmes ou gêneros..."
+                            );
+
+                            campoPesquisa.setForeground(
+                                    new Color(130, 120, 140)
+                            );
+                        }
+                    }
+                }
+        );
+
+        return barra;
+    }
+
+    // Botões arredondados com hover
+    private JButton criarBotao(String texto, Color cor) {
+
+        JButton botao = new JButton(texto) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
+
+                Graphics2D desenho =
+                        (Graphics2D) g.create();
+
+                desenho.setRenderingHint(
+                        RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON
+                );
+
+                desenho.setColor(getBackground());
+
+                desenho.fillRoundRect(
+                        0, 0,
+                        getWidth(),
+                        getHeight(),
+                        18, 18
+                );
+
+                desenho.dispose();
+
+                super.paintComponent(g);
+            }
+        };
+
+        botao.setFont(FONTE_BOTAO);
         botao.setBackground(cor);
-        botao.setForeground(Color.WHITE);
+        botao.setForeground(BRANCO);
+
+        botao.setContentAreaFilled(false);
+        botao.setBorderPainted(false);
         botao.setFocusPainted(false);
+        botao.setOpaque(false);
+
         botao.setCursor(
-            new Cursor(Cursor.HAND_CURSOR)
+                new Cursor(Cursor.HAND_CURSOR)
         );
+
+        botao.setMargin(new Insets(8, 14, 8, 14));
+
+        Color corHover = cor.equals(CORAL)
+                ? new Color(255, 124, 116)
+                : new Color(88, 55, 118);
+
+        botao.addMouseListener(new MouseAdapter() {
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                botao.setBackground(corHover);
+                botao.repaint();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                botao.setBackground(cor);
+                botao.repaint();
+            }
+        });
 
         return botao;
     }
 
+    // Pesquisa por título ou gênero
     private void pesquisar() {
-        mostrarFilmes(campoPesquisa.getText());
+
+        String pesquisa = campoPesquisa.getText();
+
+        if (pesquisa.equals(
+                "Pesquisar filmes ou gêneros...")) {
+            pesquisa = "";
+        }
+
+        mostrarFilmes(pesquisa);
     }
 
     private void mostrarFilmes(String pesquisa) {
@@ -144,10 +356,8 @@ public class TelaCatalogo extends JFrame {
 
         for (Filme filme : filmes) {
 
-            if (filme.getTitulo().toLowerCase()
-                    .contains(termo)
-                    || filme.getGenero().toLowerCase()
-                    .contains(termo)) {
+            if (filme.getTitulo().toLowerCase().contains(termo)
+                    || filme.getGenero().toLowerCase().contains(termo)) {
 
                 painelFilmes.add(criarCard(filme));
             }
@@ -157,213 +367,320 @@ public class TelaCatalogo extends JFrame {
         painelFilmes.repaint();
     }
 
-    private String mostrarEstrelas(int nota) {
-
-        if (nota == 0) {
-            return "Sem avaliação";
-        }
-
-        String estrelas = "";
-
-        for (int i = 1; i <=5; i++) {
-
-            if (i <= nota) {
-                estrelas += "★";
-            } else {
-                estrelas += "☆";
-            }
-        }
-
-        return estrelas;
-    }
-
+    // Carregamento das capas
     private JLabel criarImagem(Filme filme) {
 
         JLabel imagem = new JLabel();
-        imagem.setHorizontalAlignment(
-            SwingConstants.CENTER
-        );
-        imagem.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
 
-        
+        imagem.setHorizontalAlignment(SwingConstants.CENTER);
+        imagem.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         File arquivo = new File(filme.getCapa());
-
-        System.out.println("Procurando imagem em: "
-            + arquivo.getAbsolutePath());
-
-        System.out.println("Arquivo encontrado? "
-            + arquivo.exists());
-
 
         if (arquivo.exists()) {
 
             ImageIcon original = new ImageIcon(
-                arquivo.getAbsolutePath()
+                    arquivo.getAbsolutePath()
             );
 
             Image redimensionada = original.getImage()
-                .getScaledInstance(
-                    170, 235, Image.SCALE_SMOOTH
-                );
+                    .getScaledInstance(
+                            170, 235, Image.SCALE_SMOOTH
+                    );
 
-            imagem.setIcon(
-                new ImageIcon(redimensionada)
-            );
+            imagem.setIcon(new ImageIcon(redimensionada));
 
         } else {
 
             imagem.setText("SEM CAPA");
-            imagem.setForeground(Color.LIGHT_GRAY);
-            imagem.setFont(
-                new Font("Arial", Font.BOLD, 16)
-            );
+            imagem.setForeground(TEXTO_SUAVE);
+            imagem.setFont(FONTE_TEXTO);
         }
 
-        imagem.setPreferredSize(
-            new Dimension(180, 240)
-        );
+        imagem.setPreferredSize(new Dimension(180, 240));
 
         return imagem;
     }
 
+    // Sistema de avaliação com cinco estrelas
+    private JPanel criarAvaliacao(Filme filme) {
+
+        JPanel painelEstrelas = new JPanel(
+                new FlowLayout(FlowLayout.CENTER, 3, 0)
+        );
+
+        painelEstrelas.setOpaque(false);
+        painelEstrelas.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        JButton[] estrelas = new JButton[5];
+
+        for (int i = 0; i < 5; i++) {
+
+            final int quantidade = i + 1;
+
+            JButton estrela = new JButton();
+
+            estrela.setFont(
+                    new Font(
+                            "Segoe UI Symbol",
+                            Font.PLAIN, 27
+                    )
+            );
+
+            estrela.setForeground(DOURADO);
+            estrela.setContentAreaFilled(false);
+            estrela.setBorderPainted(false);
+            estrela.setFocusPainted(false);
+            estrela.setOpaque(false);
+
+            estrela.setMargin(new Insets(0, 0, 0, 0));
+            estrela.setPreferredSize(new Dimension(35, 40));
+
+            estrela.setCursor(
+                    new Cursor(Cursor.HAND_CURSOR)
+            );
+
+            estrela.setToolTipText(
+                    "Avaliar com " + quantidade
+                    + (quantidade == 1
+                    ? " estrela" : " estrelas")
+            );
+
+            estrelas[i] = estrela;
+
+            // Salva a avaliação escolhida
+            estrela.addActionListener(e -> {
+
+                filme.avaliar(quantidade);
+
+                atualizarEstrelas(
+                        estrelas,
+                        filme.getNota()
+                );
+            });
+
+            // Prévia ao passar o mouse
+            estrela.addMouseListener(new MouseAdapter() {
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    atualizarEstrelas(
+                            estrelas,
+                            quantidade
+                    );
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    atualizarEstrelas(
+                            estrelas,
+                            filme.getNota()
+                    );
+                }
+            });
+
+            painelEstrelas.add(estrela);
+        }
+
+        atualizarEstrelas(estrelas, filme.getNota());
+
+        return painelEstrelas;
+    }
+
+    // Atualiza as estrelas preenchidas e vazias
+    private void atualizarEstrelas(
+            JButton[] estrelas, int quantidade) {
+
+        for (int i = 0; i < estrelas.length; i++) {
+
+            if (estrelas[i] == null) {
+                continue;
+            }
+
+            if (i < quantidade) {
+                estrelas[i].setText("\u2605");
+            } else {
+                estrelas[i].setText("\u2606");
+            }
+        }
+    }
+
+    // Cartões dos filmes
     private JPanel criarCard(Filme filme) {
 
-        JPanel card = new JPanel();
+        JPanel card = new JPanel() {
+
+            @Override
+            protected void paintComponent(Graphics g) {
+
+                Graphics2D desenho =
+                        (Graphics2D) g.create();
+
+                desenho.setRenderingHint(
+                        RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON
+                );
+
+                desenho.setColor(getBackground());
+
+                desenho.fill(
+                        new RoundRectangle2D.Double(
+                                0, 0,
+                                getWidth() - 1,
+                                getHeight() - 1,
+                                24, 24
+                        )
+                );
+
+                desenho.dispose();
+            }
+        };
+
         card.setLayout(
-            new BoxLayout(card, BoxLayout.Y_AXIS)
+                new BoxLayout(card, BoxLayout.Y_AXIS)
         );
+
+        card.setOpaque(false);
         card.setBackground(CARD);
+
         card.setBorder(
-            BorderFactory.createEmptyBorder(
-                15, 12, 15, 12
-            )
+                BorderFactory.createEmptyBorder(
+                        15, 12, 15, 12
+                )
         );
 
-        JLabel imagem = criarImagem(filme);
+        // Efeito hover no cartão
+        card.addMouseListener(new MouseAdapter() {
 
-        JLabel titulo = new JLabel(
-            filme.getTitulo()
-        );
-        titulo.setFont(
-            new Font("Arial", Font.BOLD, 18)
-        );
-        titulo.setForeground(Color.WHITE);
-        titulo.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-
-        JLabel genero = new JLabel(
-            filme.getGenero() + " | " + filme.getAno()
-        );
-        genero.setForeground(Color.LIGHT_GRAY);
-        genero.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-
-        JLabel curtidas = new JLabel(
-            "Curtidas: " + filme.getCurtidas()
-        );
-        curtidas.setForeground(Color.WHITE);
-        curtidas.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-
-        JLabel nota = new JLabel(
-            mostrarEstrelas(filme.getNota())
-        );
-
-        nota.setForeground(new Color(255, 215, 0));
-        
-        nota.setFont(
-            new Font("Segoe UI Symbol", Font.PLAIN, 20)
-        );
-
-        nota.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-
-        JButton gostar = criarBotao(
-            "♥ Gostei", ROSA
-        );
-
-        JButton rejeitar = criarBotao(
-            "Não gostei", new Color(65, 65, 80)
-        );
-
-        JButton avaliar = criarBotao(
-            "★ Avaliar", new Color(65, 65, 80)
-        );
-
-        gostar.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-        rejeitar.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-        avaliar.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-
-        gostar.addActionListener(e -> {
-            filme.curtir();
-            curtidas.setText(
-                "Curtidas: " + filme.getCurtidas()
-            );
-        });
-
-        rejeitar.addActionListener(e -> {
-            filme.rejeitar();
-
-            JOptionPane.showMessageDialog(
-                this, "Preferencia registrada!"
-            );
-        });
-
-        avaliar.addActionListener(e -> {
-
-            String[] opcoes = {
-                "1", "2", "3", "4", "5"
-            };
-
-            String escolha = (String)
-                JOptionPane.showInputDialog(
-                    this,
-                    "Qual nota voce daria?",
-                    "Avaliar filme",
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    opcoes,
-                    opcoes[4]
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                card.setBackground(
+                        new Color(72, 43, 100)
                 );
+                card.repaint();
+            }
 
-            if (escolha != null) {
-
-                filme.avaliar(
-                    Integer.parseInt(escolha)
-                );
-
-                nota.setText(
-                    mostrarEstrelas(filme.getNota())
-                );
+            @Override
+            public void mouseExited(MouseEvent e) {
+                card.setBackground(CARD);
+                card.repaint();
             }
         });
 
+        // Capa do filme
+        JLabel imagem = criarImagem(filme);
+
+        // Título
+        JLabel titulo = new JLabel(
+                filme.getTitulo()
+        );
+
+        titulo.setFont(FONTE_TITULO);
+        titulo.setForeground(BRANCO);
+        titulo.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        // Gênero e ano
+        JLabel genero = new JLabel(
+                filme.getGenero() + " | " + filme.getAno()
+        );
+
+        genero.setFont(FONTE_TEXTO);
+        genero.setForeground(TEXTO_SUAVE);
+        genero.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        // NOVO: Nome do diretor
+        JLabel diretor = new JLabel(
+                "Direção: " + filme.getDiretor()
+        );
+
+        diretor.setFont(FONTE_DIRETOR);
+        diretor.setForeground(TEXTO_SUAVE);
+        diretor.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        // Curtidas
+        JLabel curtidas = new JLabel(
+                "Curtidas: " + filme.getCurtidas()
+        );
+
+        curtidas.setFont(FONTE_TEXTO);
+        curtidas.setForeground(BRANCO);
+        curtidas.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        // Estrelas clicáveis
+        JPanel avaliacao = criarAvaliacao(filme);
+
+        // Botões de preferência
+        JButton gostar = criarBotao(
+                "Gostei", CORAL
+        );
+
+        JButton rejeitar = criarBotao(
+                "Não gostei", ROXO_BOTAO
+        );
+
+        gostar.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        rejeitar.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        // Ação de curtir
+        gostar.addActionListener(e -> {
+
+            filme.curtir();
+
+            curtidas.setText(
+                    "Curtidas: " + filme.getCurtidas()
+            );
+        });
+
+        // Ação de rejeitar
+        rejeitar.addActionListener(e -> {
+
+            filme.rejeitar();
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Preferência registrada!"
+            );
+        });
+
+        // Organização dos cartões
         card.add(imagem);
         card.add(Box.createVerticalStrut(12));
+
         card.add(titulo);
         card.add(Box.createVerticalStrut(6));
+
         card.add(genero);
+        card.add(Box.createVerticalStrut(5));
+
+        // Diretor abaixo do gênero e ano
+        card.add(diretor);
         card.add(Box.createVerticalStrut(12));
+
         card.add(curtidas);
-        card.add(nota);
+        card.add(Box.createVerticalStrut(8));
+
+        card.add(avaliacao);
         card.add(Box.createVerticalStrut(12));
+
         card.add(gostar);
-        card.add(Box.createVerticalStrut(6));
+        card.add(Box.createVerticalStrut(8));
+
         card.add(rejeitar);
-        card.add(Box.createVerticalStrut(6));
-        card.add(avaliar);
 
         return card;
     }
