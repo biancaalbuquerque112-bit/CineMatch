@@ -1,4 +1,3 @@
-
 public class Usuario {
 
     private String nome;
@@ -20,6 +19,26 @@ public class Usuario {
     }
 
     public boolean verificarSenha(String senhaInformada) {
-        return senha.equals(senhaInformada);
+        return senha != null && senha.equals(senhaInformada);
+    }
+
+    // --- METODOS DE POO ---
+
+    @Override
+    public String toString() {
+        return nome + " <" + email + ">";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Usuario outro = (Usuario) obj;
+        return email != null && email.equalsIgnoreCase(outro.email);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(email != null ? email.toLowerCase() : null);
     }
 }
