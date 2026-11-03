@@ -108,7 +108,7 @@ public class TelaPessoas extends JFrame {
             @Override
             public void windowClosed(
                     java.awt.event.WindowEvent e) {
-                telaAnterior.voltarParaFilmes();
+                telaAnterior.mostrarDescoberta();
             }
         });
 
