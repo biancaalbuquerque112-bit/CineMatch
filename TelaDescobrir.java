@@ -673,7 +673,7 @@ public class TelaDescobrir extends JFrame {
 
     // TELA PRINCIPAL DE DESCOBERTA
 
-    private void mostrarDescoberta() {
+    void mostrarDescoberta() {
 
         JPanel tela = transparente(
                 new BorderLayout(15, 15)
