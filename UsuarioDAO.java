@@ -57,4 +57,23 @@ public class UsuarioDAO {
 
         return null;
     }
+
+    // Atualiza os dados de biografia e intenção do usuário no banco H2
+    public boolean atualizarPerfil(String email, String bio, String intencao) {
+        String sql = "UPDATE usuario SET bio = ?, intencao = ? WHERE email = ?";
+
+        try (Connection conn = ConexaoBanco.getConexao();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, bio);
+            stmt.setString(2, intencao);
+            stmt.setString(3, email);
+
+            return stmt.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Erro ao atualizar perfil do usuário: " + e.getMessage());
+            return false;
+        }
+    }
 }
