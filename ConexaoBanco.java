@@ -15,7 +15,7 @@ public class ConexaoBanco {
         return DriverManager.getConnection(URL, USUARIO, SENHA);
     }
 
-    // Cria as tabelas do sistema se ainda não existirem
+    // Cria as tabelas do sistema se ainda não existirem e popula os filmes iniciais
     public static void inicializarBanco() {
         String sqlUsuario = "CREATE TABLE IF NOT EXISTS usuario ("
                 + "id INT AUTO_INCREMENT PRIMARY KEY, "
@@ -43,6 +43,10 @@ public class ConexaoBanco {
             stmt.execute(sqlUsuario);
             stmt.execute(sqlFilme);
             System.out.println("Banco de dados H2 inicializado com sucesso!");
+
+            // Popula a tabela de filmes caso esteja vazia
+            FilmeDAO filmeDAO = new FilmeDAO();
+            filmeDAO.popularBancoSeVazio();
 
         } catch (SQLException e) {
             System.err.println("Erro ao inicializar o banco de dados: " + e.getMessage());
