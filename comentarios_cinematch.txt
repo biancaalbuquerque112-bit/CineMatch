@@ -1,0 +1,2 @@
+Interestelar	1	0	2	isadora	ooooo
+Interestelar	2	1	0	isadora	hhhh
