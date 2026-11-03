@@ -1,9 +1,10 @@
-
 import java.awt.*;
-import java.io.*;
-import java.net.*;
+import java.io.File;
+import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
@@ -16,14 +17,11 @@ public class TelaDetalhesFilme extends JPanel {
     private final Color TEXTO = new Color(247, 243, 250);
     private final Color SUAVE = new Color(220, 204, 232);
 
-    private static final File ARQUIVO =
-            new File("comentarios_cinematch.txt");
-
     private final Filme filme;
     private final Runnable voltar;
+    private final ComentarioDAO comentarioDAO;
 
-    private final ArrayList<Comentario> comentarios =
-            new ArrayList<>();
+    private final ArrayList<Comentario> comentarios = new ArrayList<>();
 
     private final JPanel lista = new JPanel();
     private final JTextArea campoComentario = new JTextArea(4, 30);
@@ -36,39 +34,13 @@ public class TelaDetalhesFilme extends JPanel {
     private static final int LARGURA = 720;
 
     // =========================================
-    // CLASSE DOS COMENTÁRIOS
-    // =========================================
-
-    private class Comentario {
-
-        int id;
-        int respostaA;
-        int curtidas;
-
-        String tituloFilme;
-        String autor;
-        String texto;
-
-        Comentario(int id, int respostaA, int curtidas,
-                   String tituloFilme, String autor, String texto) {
-
-            this.id = id;
-            this.respostaA = respostaA;
-            this.curtidas = curtidas;
-            this.tituloFilme = tituloFilme;
-            this.autor = autor;
-            this.texto = texto;
-        }
-    }
-
-    // =========================================
     // CONSTRUTOR
     // =========================================
 
     public TelaDetalhesFilme(Filme filme, Runnable voltar) {
-
         this.filme = filme;
         this.voltar = voltar;
+        this.comentarioDAO = new ComentarioDAO();
 
         setLayout(new BorderLayout());
         setBackground(FUNDO);
@@ -82,92 +54,49 @@ public class TelaDetalhesFilme extends JPanel {
     // COMPONENTES
     // =========================================
 
-    private JLabel rotulo(String texto, int tamanho,
-                          boolean negrito) {
-
+    private JLabel rotulo(String texto, int tamanho, boolean negrito) {
         JLabel label = new JLabel(texto);
-
-        label.setFont(new Font(
-                "Times New Roman",
-                negrito ? Font.BOLD : Font.PLAIN,
-                tamanho
-        ));
-
+        label.setFont(new Font("Times New Roman", negrito ? Font.BOLD : Font.PLAIN, tamanho));
         label.setForeground(TEXTO);
-
         return label;
     }
 
     private JPanel painel(Color cor) {
-
         JPanel p = new JPanel();
         p.setBackground(cor);
-
         return p;
     }
 
     private JButton botao(String texto, Color cor) {
-
         JButton b = new JButton(texto) {
-
             @Override
             protected void paintComponent(Graphics g) {
-
                 Graphics2D g2 = (Graphics2D) g.create();
-
-                g2.setRenderingHint(
-                        RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON
-                );
-
-                g2.setColor(
-                        getModel().isRollover()
-                                ? cor.brighter()
-                                : cor
-                );
-
-                g2.fillRoundRect(
-                        0, 0,
-                        getWidth(), getHeight(),
-                        18, 18
-                );
-
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getModel().isRollover() ? cor.brighter() : cor);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
                 g2.dispose();
                 super.paintComponent(g);
             }
         };
 
-        b.setFont(new Font(
-                "Times New Roman", Font.BOLD, 16
-        ));
-
+        b.setFont(new Font("Times New Roman", Font.BOLD, 16));
         b.setForeground(Color.WHITE);
         b.setContentAreaFilled(false);
         b.setBorderPainted(false);
         b.setFocusPainted(false);
         b.setOpaque(false);
-
         b.setBorder(new EmptyBorder(10, 15, 10, 15));
-
-        b.setCursor(
-                Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        );
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         return b;
     }
 
-    private JTextArea textoLongo(String texto, int tamanho,
-                                 Color fundo) {
-
+    private JTextArea textoLongo(String texto, int tamanho, Color fundo) {
         JTextArea area = new JTextArea(texto);
-
-        area.setFont(new Font(
-                "Times New Roman", Font.PLAIN, tamanho
-        ));
-
+        area.setFont(new Font("Times New Roman", Font.PLAIN, tamanho));
         area.setForeground(SUAVE);
         area.setBackground(fundo);
-
         area.setLineWrap(true);
         area.setWrapStyleWord(true);
         area.setEditable(false);
@@ -178,15 +107,9 @@ public class TelaDetalhesFilme extends JPanel {
     }
 
     private void ajustarLargura(JComponent componente) {
-
         componente.setAlignmentX(Component.CENTER_ALIGNMENT);
-
         Dimension tamanho = componente.getPreferredSize();
-
-        componente.setMaximumSize(new Dimension(
-                LARGURA,
-                tamanho.height
-        ));
+        componente.setMaximumSize(new Dimension(LARGURA, tamanho.height));
     }
 
     // =========================================
@@ -194,52 +117,26 @@ public class TelaDetalhesFilme extends JPanel {
     // =========================================
 
     private JLabel criarCapa(int largura, int altura) {
-
-        JLabel imagem = new JLabel(
-                "Capa indisponível", SwingConstants.CENTER
-        );
-
+        JLabel imagem = new JLabel("Capa indisponível", SwingConstants.CENTER);
         imagem.setForeground(TEXTO);
-
         imagem.setPreferredSize(new Dimension(largura, altura));
 
         File arquivo = new File(filme.getCapa());
-
         if (!arquivo.isFile()) {
             arquivo = new File("src", filme.getCapa());
         }
 
         if (arquivo.isFile()) {
-
-            ImageIcon original = new ImageIcon(
-                    arquivo.getAbsolutePath()
-            );
-
+            ImageIcon original = new ImageIcon(arquivo.getAbsolutePath());
             int w = original.getIconWidth();
             int h = original.getIconHeight();
 
             if (w > 0 && h > 0) {
+                double escala = Math.min((double) largura / w, (double) altura / h);
+                int novaLargura = Math.max(1, (int) Math.round(w * escala));
+                int novaAltura = Math.max(1, (int) Math.round(h * escala));
 
-                double escala = Math.min(
-                        (double) largura / w,
-                        (double) altura / h
-                );
-
-                int novaLargura = Math.max(
-                        1, (int) Math.round(w * escala)
-                );
-
-                int novaAltura = Math.max(
-                        1, (int) Math.round(h * escala)
-                );
-
-                Image ajustada = original.getImage()
-                        .getScaledInstance(
-                                novaLargura,
-                                novaAltura,
-                                Image.SCALE_SMOOTH
-                        );
-
+                Image ajustada = original.getImage().getScaledInstance(novaLargura, novaAltura, Image.SCALE_SMOOTH);
                 imagem.setIcon(new ImageIcon(ajustada));
                 imagem.setText("");
             }
@@ -253,89 +150,48 @@ public class TelaDetalhesFilme extends JPanel {
     // =========================================
 
     private void montarTela() {
-
         // CABEÇALHO
-
         JPanel cabecalho = painel(FUNDO);
         cabecalho.setLayout(new BorderLayout());
-
-        cabecalho.setBorder(
-                new EmptyBorder(12, 22, 12, 22)
-        );
+        cabecalho.setBorder(new EmptyBorder(12, 22, 12, 22));
 
         JLabel logo = rotulo("CineMatch", 29, true);
-
-        logo.setFont(new Font(
-                "Nimbus Sans", Font.BOLD, 29
-        ));
-
+        logo.setFont(new Font("Nimbus Sans", Font.BOLD, 29));
         cabecalho.add(logo, BorderLayout.WEST);
 
-        JButton voltarBotao = botao(
-                "Voltar ao filme", ROXO
-        );
-
+        JButton voltarBotao = botao("Voltar ao filme", ROXO);
         voltarBotao.addActionListener(e -> voltar.run());
-
         cabecalho.add(voltarBotao, BorderLayout.EAST);
 
         add(cabecalho, BorderLayout.NORTH);
 
         // COLUNA PRINCIPAL CENTRALIZADA
-
         JPanel coluna = painel(FUNDO);
-
-        coluna.setLayout(
-                new BoxLayout(coluna, BoxLayout.Y_AXIS)
-        );
-
-        coluna.setBorder(
-                new EmptyBorder(15, 0, 30, 0)
-        );
+        coluna.setLayout(new BoxLayout(coluna, BoxLayout.Y_AXIS));
+        coluna.setBorder(new EmptyBorder(15, 0, 30, 0));
 
         // CAPA
-
         JPanel painelCapa = painel(FUNDO);
-
-        painelCapa.setLayout(
-                new FlowLayout(FlowLayout.CENTER, 0, 0)
-        );
-
+        painelCapa.setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
         painelCapa.add(criarCapa(200, 290));
-
-        painelCapa.setPreferredSize(
-                new Dimension(LARGURA, 300)
-        );
-
+        painelCapa.setPreferredSize(new Dimension(LARGURA, 300));
         ajustarLargura(painelCapa);
 
         coluna.add(painelCapa);
         coluna.add(Box.createVerticalStrut(12));
 
         // TÍTULO DO FILME
-
-        JLabel titulo = rotulo(
-                filme.getTitulo(), 28, true
-        );
-
+        JLabel titulo = rotulo(filme.getTitulo(), 28, true);
         titulo.setAlignmentX(Component.CENTER_ALIGNMENT);
-
         coluna.add(titulo);
         coluna.add(Box.createVerticalStrut(18));
 
         String[] dados = fichaExtra(filme.getTitulo());
 
         // FICHA TÉCNICA
-
         JPanel ficha = painel(CARD);
-
-        ficha.setLayout(
-                new BoxLayout(ficha, BoxLayout.Y_AXIS)
-        );
-
-        ficha.setBorder(
-                new EmptyBorder(18, 20, 18, 20)
-        );
+        ficha.setLayout(new BoxLayout(ficha, BoxLayout.Y_AXIS));
+        ficha.setBorder(new EmptyBorder(18, 20, 18, 20));
 
         adicionarLinha(ficha, "Ano: " + filme.getAno());
         adicionarLinha(ficha, "Gênero: " + filme.getGenero());
@@ -344,23 +200,18 @@ public class TelaDetalhesFilme extends JPanel {
 
         ficha.add(Box.createVerticalStrut(8));
 
-        JLabel tituloElenco = rotulo(
-                "Elenco principal", 19, true
-        );
-
+        JLabel tituloElenco = rotulo("Elenco principal", 19, true);
         tituloElenco.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         ficha.add(tituloElenco);
         ficha.add(Box.createVerticalStrut(6));
 
         JTextArea elenco = textoLongo(dados[1], 17, CARD);
-
         elenco.setRows(3);
         elenco.setColumns(55);
         elenco.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         ficha.add(elenco);
-
         ficha.setPreferredSize(new Dimension(LARGURA, 235));
         ajustarLargura(ficha);
 
@@ -368,245 +219,133 @@ public class TelaDetalhesFilme extends JPanel {
         coluna.add(Box.createVerticalStrut(15));
 
         // SINOPSE
-
         JPanel painelSinopse = painel(CARD);
-
         painelSinopse.setLayout(new BorderLayout(0, 10));
+        painelSinopse.setBorder(new EmptyBorder(18, 20, 18, 20));
 
-        painelSinopse.setBorder(
-                new EmptyBorder(18, 20, 18, 20)
-        );
-
-        painelSinopse.add(
-                rotulo("Sinopse", 22, true),
-                BorderLayout.NORTH
-        );
+        painelSinopse.add(rotulo("Sinopse", 22, true), BorderLayout.NORTH);
 
         JTextArea sinopse = textoLongo(dados[2], 18, CARD);
-
         sinopse.setRows(5);
         sinopse.setColumns(55);
 
-        painelSinopse.add(
-                sinopse, BorderLayout.CENTER
-        );
-
-        painelSinopse.setPreferredSize(
-                new Dimension(LARGURA, 185)
-        );
-
+        painelSinopse.add(sinopse, BorderLayout.CENTER);
+        painelSinopse.setPreferredSize(new Dimension(LARGURA, 185));
         ajustarLargura(painelSinopse);
 
         coluna.add(painelSinopse);
         coluna.add(Box.createVerticalStrut(12));
 
         // ROTTEN TOMATOES
-
         JPanel painelRotten = painel(FUNDO);
+        painelRotten.setLayout(new FlowLayout(FlowLayout.CENTER));
 
-        painelRotten.setLayout(
-                new FlowLayout(FlowLayout.CENTER)
-        );
-
-        JButton rotten = botao(
-                "Consultar Rotten Tomatoes", CORAL
-        );
-
+        JButton rotten = botao("Consultar Rotten Tomatoes", CORAL);
         rotten.addActionListener(e -> abrirRotten());
 
         painelRotten.add(rotten);
-
-        painelRotten.setPreferredSize(
-                new Dimension(LARGURA, 58)
-        );
-
+        painelRotten.setPreferredSize(new Dimension(LARGURA, 58));
         ajustarLargura(painelRotten);
 
         coluna.add(painelRotten);
         coluna.add(Box.createVerticalStrut(18));
 
-        // =========================================
-        // COMENTÁRIOS: MESMA COLUNA DA FICHA
-        // =========================================
-
+        // SEÇÃO DE COMENTÁRIOS
         JPanel secaoComentarios = painel(FUNDO);
+        secaoComentarios.setLayout(new BoxLayout(secaoComentarios, BoxLayout.Y_AXIS));
+        secaoComentarios.setPreferredSize(new Dimension(LARGURA, 350));
+        secaoComentarios.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        secaoComentarios.setLayout(
-                new BoxLayout(
-                        secaoComentarios,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-        secaoComentarios.setPreferredSize(
-                new Dimension(LARGURA, 350)
-        );
-
-        secaoComentarios.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
-
-        JLabel tituloComentarios = rotulo(
-                "Comentários sobre o filme", 24, true
-        );
-
-        tituloComentarios.setAlignmentX(
-                Component.LEFT_ALIGNMENT
-        );
+        JLabel tituloComentarios = rotulo("Comentários sobre o filme", 24, true);
+        tituloComentarios.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         secaoComentarios.add(tituloComentarios);
         secaoComentarios.add(Box.createVerticalStrut(12));
 
-        // A lista ocupa a largura inteira da coluna.
-
-        lista.setLayout(
-                new BoxLayout(lista, BoxLayout.Y_AXIS)
-        );
-
+        lista.setLayout(new BoxLayout(lista, BoxLayout.Y_AXIS));
         lista.setBackground(FUNDO);
         lista.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        lista.setPreferredSize(
-                new Dimension(LARGURA, 0)
-        );
-
-        lista.setMaximumSize(
-                new Dimension(LARGURA, Integer.MAX_VALUE)
-        );
+        lista.setPreferredSize(new Dimension(LARGURA, 0));
+        lista.setMaximumSize(new Dimension(LARGURA, Integer.MAX_VALUE));
 
         secaoComentarios.add(lista);
         secaoComentarios.add(Box.createVerticalStrut(15));
 
-        indicadorResposta = rotulo(
-                "Escreva seu comentário:", 18, true
-        );
-
-        indicadorResposta.setAlignmentX(
-                Component.LEFT_ALIGNMENT
-        );
+        indicadorResposta = rotulo("Escreva seu comentário:", 18, true);
+        indicadorResposta.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         secaoComentarios.add(indicadorResposta);
         secaoComentarios.add(Box.createVerticalStrut(8));
 
         // CAMPO DE COMENTÁRIO
-
-        campoComentario.setFont(new Font(
-                "Times New Roman", Font.PLAIN, 17
-        ));
-
+        campoComentario.setFont(new Font("Times New Roman", Font.PLAIN, 17));
         campoComentario.setLineWrap(true);
         campoComentario.setWrapStyleWord(true);
         campoComentario.setBackground(CARD);
         campoComentario.setForeground(TEXTO);
         campoComentario.setCaretColor(TEXTO);
-
-        campoComentario.setBorder(
-                new EmptyBorder(12, 12, 12, 12)
-        );
+        campoComentario.setBorder(new EmptyBorder(12, 12, 12, 12));
 
         JScrollPane editor = new JScrollPane(
                 campoComentario,
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
         );
-
-        editor.setPreferredSize(
-                new Dimension(LARGURA, 110)
-        );
-
-        editor.setMaximumSize(
-                new Dimension(LARGURA, 110)
-        );
-
+        editor.setPreferredSize(new Dimension(LARGURA, 110));
+        editor.setMaximumSize(new Dimension(LARGURA, 110));
         editor.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         secaoComentarios.add(editor);
         secaoComentarios.add(Box.createVerticalStrut(10));
 
         // AÇÕES DOS COMENTÁRIOS
-
         JPanel acoes = painel(FUNDO);
+        acoes.setLayout(new FlowLayout(FlowLayout.RIGHT, 8, 0));
 
-        acoes.setLayout(
-                new FlowLayout(FlowLayout.RIGHT, 8, 0)
-        );
-
-        JButton cancelar = botao(
-                "Cancelar resposta", ROXO
-        );
-
+        JButton cancelar = botao("Cancelar resposta", ROXO);
         cancelar.addActionListener(e -> {
-
             respondendoA = 0;
-
-            indicadorResposta.setText(
-                    "Escreva seu comentário:"
-            );
+            indicadorResposta.setText("Escreva seu comentário:");
         });
 
         JButton publicar = botao("Publicar", CORAL);
-
         publicar.addActionListener(e -> publicar());
 
-        JButton limpar = botao(
-                "Limpar comentários deste filme", ROXO
-        );
-
+        JButton limpar = botao("Limpar comentários deste filme", ROXO);
         limpar.addActionListener(e -> limparComentariosFilme());
 
         acoes.add(limpar);
         acoes.add(cancelar);
         acoes.add(publicar);
-
         acoes.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         secaoComentarios.add(acoes);
-
-        // Permite que a seção aumente quando surgirem
-        // comentários e respostas.
-        secaoComentarios.setMaximumSize(
-                new Dimension(LARGURA, Integer.MAX_VALUE)
-        );
+        secaoComentarios.setMaximumSize(new Dimension(LARGURA, Integer.MAX_VALUE));
 
         coluna.add(secaoComentarios);
 
-        // PAINEL CENTRAL
-
+        // PAINEL CENTRAL E ROLAGEM
         JPanel pagina = painel(FUNDO);
-
-        pagina.setLayout(
-                new FlowLayout(FlowLayout.CENTER, 0, 0)
-        );
-
+        pagina.setLayout(new FlowLayout(FlowLayout.CENTER, 0, 0));
         pagina.add(coluna);
-
-        // ROLAGEM VERTICAL, SEM BARRA HORIZONTAL
 
         JScrollPane rolagem = new JScrollPane(
                 pagina,
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
         );
-
         rolagem.setBorder(null);
         rolagem.getViewport().setBackground(FUNDO);
-
-        rolagem.getVerticalScrollBar()
-                .setUnitIncrement(20);
+        rolagem.getVerticalScrollBar().setUnitIncrement(20);
 
         add(rolagem, BorderLayout.CENTER);
 
-        SwingUtilities.invokeLater(() ->
-                rolagem.getVerticalScrollBar().setValue(0)
-        );
+        SwingUtilities.invokeLater(() -> rolagem.getVerticalScrollBar().setValue(0));
     }
 
     private void adicionarLinha(JPanel painel, String texto) {
-
         JLabel linha = rotulo(texto, 18, false);
-
         linha.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         painel.add(linha);
         painel.add(Box.createVerticalStrut(6));
     }
@@ -616,9 +355,6 @@ public class TelaDetalhesFilme extends JPanel {
     // =========================================
 
     private String[] fichaExtra(String titulo) {
-
-        // 1 - 10
-
         if (titulo.equalsIgnoreCase("Interestelar"))
             return ficha("2h48min",
                     "Matthew McConaughey, Anne Hathaway, Jessica Chastain e Michael Caine",
@@ -668,8 +404,6 @@ public class TelaDetalhesFilme extends JPanel {
             return ficha("1h29min",
                     "Jennifer Tilly, Brad Dourif, Katherine Heigl e Nick Stabile",
                     "Tiffany recupera o boneco Chucky e acaba envolvida em seus planos violentos. Os dois embarcam em uma viagem macabra que mistura terror e humor.");
-
-        // 11 - 20
 
         if (titulo.equalsIgnoreCase("La La Land"))
             return ficha("2h08min",
@@ -721,8 +455,6 @@ public class TelaDetalhesFilme extends JPanel {
                     "Leonardo DiCaprio, Mark Ruffalo, Ben Kingsley e Michelle Williams",
                     "Dois agentes investigam o desaparecimento de uma paciente de um hospital psiquiátrico localizado em uma ilha. Durante a investigação, fatos estranhos colocam suas certezas em dúvida.");
 
-        // 21 - 30
-
         if (titulo.equalsIgnoreCase("Duna: Parte Dois"))
             return ficha("2h46min",
                     "Timothée Chalamet, Zendaya, Rebecca Ferguson, Javier Bardem e Florence Pugh",
@@ -772,8 +504,6 @@ public class TelaDetalhesFilme extends JPanel {
             return ficha("2h05min",
                     "Rumi Hiiragi, Miyu Irino, Mari Natsuki e Bunta Sugawara (vozes)",
                     "Chihiro entra em um mundo habitado por espíritos e criaturas mágicas. Para salvar os pais, precisa encontrar coragem e uma maneira de voltar para casa.");
-
-        // 31 - 40
 
         if (titulo.equalsIgnoreCase("As Branquelas"))
             return ficha("1h49min",
@@ -825,8 +555,6 @@ public class TelaDetalhesFilme extends JPanel {
                     "Cillian Murphy, Emily Blunt, Robert Downey Jr. e Matt Damon",
                     "O filme acompanha a trajetória do físico J. Robert Oppenheimer, seu trabalho no desenvolvimento da bomba atômica e os conflitos morais e políticos decorrentes.");
 
-        // 41 - 50
-
         if (titulo.equalsIgnoreCase("Central do Brasil"))
             return ficha("1h53min",
                     "Fernanda Montenegro, Vinícius de Oliveira, Marília Pêra e Othon Bastos",
@@ -877,21 +605,11 @@ public class TelaDetalhesFilme extends JPanel {
                     "Amy Winehouse, familiares, amigos e profissionais ligados à cantora",
                     "Por meio de gravações e entrevistas, o documentário acompanha a carreira de Amy Winehouse, seu talento e as dificuldades que enfrentou.");
 
-        return ficha(
-                "Não informada",
-                "Não informado",
-                "Sinopse ainda não cadastrada."
-        );
+        return ficha("Não informada", "Não informado", "Sinopse ainda não cadastrada.");
     }
 
-    private String[] ficha(
-            String duracao, String elenco, String sinopse) {
-
-        return new String[]{
-                duracao,
-                elenco,
-                sinopse
-        };
+    private String[] ficha(String duracao, String elenco, String sinopse) {
+        return new String[]{duracao, elenco, sinopse};
     }
 
     // =========================================
@@ -899,139 +617,34 @@ public class TelaDetalhesFilme extends JPanel {
     // =========================================
 
     private void abrirRotten() {
-
         try {
-
-            String busca = URLEncoder.encode(
-                    filme.getTitulo(),
-                    StandardCharsets.UTF_8.name()
-            );
-
-            Desktop.getDesktop().browse(
-                    new URI(
-                            "https://www.rottentomatoes.com/search?search="
-                            + busca
-                    )
-            );
-
+            String busca = URLEncoder.encode(filme.getTitulo(), StandardCharsets.UTF_8.name());
+            Desktop.getDesktop().browse(new URI("https://www.rottentomatoes.com/search?search=" + busca));
         } catch (Exception e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Não foi possível abrir o Rotten Tomatoes."
-            );
+            JOptionPane.showMessageDialog(this, "Não foi possível abrir o Rotten Tomatoes.");
         }
     }
 
     // =========================================
-    // ARQUIVO DE COMENTÁRIOS
+    // PERSISTÊNCIA VIA H2 (ComentarioDAO)
     // =========================================
 
     private String limpar(String texto) {
-
-        return texto.replace('\t', ' ')
-                .replace('\n', ' ')
-                .replace('\r', ' ')
-                .trim();
+        return texto.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ').trim();
     }
 
     private void carregarComentarios() {
-
         comentarios.clear();
-
-        if (!ARQUIVO.isFile()) {
-            return;
-        }
-
-        try (BufferedReader leitor = new BufferedReader(
-                new InputStreamReader(
-                        new FileInputStream(ARQUIVO),
-                        StandardCharsets.UTF_8
-                ))) {
-
-            String linha;
-
-            while ((linha = leitor.readLine()) != null) {
-
-                String[] campos = linha.split("\t", -1);
-
-                if (campos.length != 6) {
-                    continue;
-                }
-
-                try {
-
-                    Comentario c = new Comentario(
-                            Integer.parseInt(campos[1]),
-                            Integer.parseInt(campos[2]),
-                            Integer.parseInt(campos[3]),
-                            campos[0],
-                            campos[4],
-                            campos[5]
-                    );
-
-                    comentarios.add(c);
-
-                } catch (NumberFormatException e) {
-                    // Ignora uma linha inválida.
-                }
-            }
-
-        } catch (IOException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Não foi possível carregar os comentários."
-            );
+        List<Comentario> listaBanco = comentarioDAO.listarPorFilme(filme.getId());
+        if (listaBanco != null) {
+            comentarios.addAll(listaBanco);
         }
     }
-
-    private boolean salvarComentarios() {
-
-        try (BufferedWriter escritor = new BufferedWriter(
-                new OutputStreamWriter(
-                        new FileOutputStream(ARQUIVO),
-                        StandardCharsets.UTF_8
-                ))) {
-
-            for (Comentario c : comentarios) {
-
-                escritor.write(
-                        limpar(c.tituloFilme) + "\t"
-                        + c.id + "\t"
-                        + c.respostaA + "\t"
-                        + c.curtidas + "\t"
-                        + limpar(c.autor) + "\t"
-                        + limpar(c.texto)
-                );
-
-                escritor.newLine();
-            }
-
-            return true;
-
-        } catch (IOException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Não foi possível salvar os comentários."
-            );
-
-            return false;
-        }
-    }
-
-    // =========================================
-    // APAGAR COMENTÁRIOS DE TESTE
-    // =========================================
 
     private void limparComentariosFilme() {
-
         int escolha = JOptionPane.showConfirmDialog(
                 this,
-                "Apagar todos os comentários e respostas de "
-                + filme.getTitulo()
-                + "?\nEssa ação não pode ser desfeita.",
+                "Apagar todos os comentários e respostas de " + filme.getTitulo() + "?\nEssa ação não pode ser desfeita.",
                 "Confirmar limpeza",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
@@ -1041,41 +654,14 @@ public class TelaDetalhesFilme extends JPanel {
             return;
         }
 
-        ArrayList<Comentario> removidos =
-                new ArrayList<>();
+        comentarioDAO.limparPorFilme(filme.getId());
+        carregarComentarios();
 
-        for (Comentario c : comentarios) {
+        respondendoA = 0;
+        indicadorResposta.setText("Escreva seu comentário:");
+        atualizarComentarios();
 
-            if (c.tituloFilme.equalsIgnoreCase(
-                    filme.getTitulo())) {
-
-                removidos.add(c);
-            }
-        }
-
-        comentarios.removeAll(removidos);
-
-        if (salvarComentarios()) {
-
-            respondendoA = 0;
-
-            indicadorResposta.setText(
-                    "Escreva seu comentário:"
-            );
-
-            atualizarComentarios();
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Comentários deste filme apagados."
-            );
-
-        } else {
-
-            // Restaura a lista na memória se não conseguiu salvar.
-            carregarComentarios();
-            atualizarComentarios();
-        }
+        JOptionPane.showMessageDialog(this, "Comentários deste filme apagados.");
     }
 
     // =========================================
@@ -1083,67 +669,39 @@ public class TelaDetalhesFilme extends JPanel {
     // =========================================
 
     private void publicar() {
-
-        String mensagem = limpar(
-                campoComentario.getText()
-        );
+        String mensagem = limpar(campoComentario.getText());
 
         if (mensagem.isEmpty()) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Digite um comentário antes de publicar."
-            );
-
+            JOptionPane.showMessageDialog(this, "Digite um comentário antes de publicar.");
             return;
         }
 
         if (autor == null || autor.isEmpty()) {
-
-            String nome = JOptionPane.showInputDialog(
-                    this,
-                    "Qual nome deseja exibir?"
-            );
-
+            String nome = JOptionPane.showInputDialog(this, "Qual nome deseja exibir?");
             if (nome == null || limpar(nome).isEmpty()) {
                 return;
             }
-
             autor = limpar(nome);
         }
 
-        int maiorId = 0;
-
-        for (Comentario c : comentarios) {
-            maiorId = Math.max(maiorId, c.id);
-        }
-
         Comentario novo = new Comentario(
-                maiorId + 1,
+                0,
                 respondendoA,
                 0,
                 filme.getTitulo(),
                 autor,
                 mensagem
         );
+        novo.setFilmeId(filme.getId());
 
-        comentarios.add(novo);
+        comentarioDAO.inserir(novo);
 
-        if (salvarComentarios()) {
+        campoComentario.setText("");
+        respondendoA = 0;
+        indicadorResposta.setText("Escreva seu comentário:");
 
-            campoComentario.setText("");
-            respondendoA = 0;
-
-            indicadorResposta.setText(
-                    "Escreva seu comentário:"
-            );
-
-            atualizarComentarios();
-
-        } else {
-
-            comentarios.remove(novo);
-        }
+        carregarComentarios();
+        atualizarComentarios();
     }
 
     // =========================================
@@ -1151,34 +709,20 @@ public class TelaDetalhesFilme extends JPanel {
     // =========================================
 
     private void atualizarComentarios() {
-
         lista.removeAll();
-
         int encontrados = 0;
 
         for (Comentario c : comentarios) {
-
-            if (!c.tituloFilme.equalsIgnoreCase(
-                    filme.getTitulo())) {
-                continue;
-            }
-
-            if (c.respostaA != 0) {
+            if (c.getRespostaA() != 0) {
                 continue;
             }
 
             lista.add(cartaoComentario(c, false));
-
             lista.add(Box.createVerticalStrut(7));
-
             encontrados++;
 
             for (Comentario resposta : comentarios) {
-
-                if (resposta.respostaA == c.id
-                        && resposta.tituloFilme.equalsIgnoreCase(
-                                filme.getTitulo())) {
-
+                if (resposta.getRespostaA() == c.getId()) {
                     lista.add(cartaoComentario(resposta, true));
                     lista.add(Box.createVerticalStrut(7));
                 }
@@ -1188,23 +732,13 @@ public class TelaDetalhesFilme extends JPanel {
         }
 
         if (encontrados == 0) {
-
-            JLabel vazio = rotulo(
-                    "Seja a primeira pessoa a comentar.",
-                    17,
-                    false
-            );
-
+            JLabel vazio = rotulo("Seja a primeira pessoa a comentar.", 17, false);
             vazio.setAlignmentX(Component.LEFT_ALIGNMENT);
-
             lista.add(vazio);
         }
 
         lista.revalidate();
         lista.repaint();
-
-        // Atualiza também os painéis que dependem
-        // da altura total dos comentários.
         revalidate();
         repaint();
     }
@@ -1213,88 +747,39 @@ public class TelaDetalhesFilme extends JPanel {
     // CARTÃO ALINHADO À ESQUERDA
     // =========================================
 
-    private JPanel cartaoComentario(
-            Comentario c, boolean resposta) {
-
-        Color fundoCartao = resposta
-                ? new Color(70, 44, 93)
-                : CARD;
-
+    private JPanel cartaoComentario(Comentario c, boolean resposta) {
+        Color fundoCartao = resposta ? new Color(70, 44, 93) : CARD;
         JPanel cartao = painel(fundoCartao);
 
         cartao.setLayout(new BorderLayout(8, 8));
-
-        cartao.setBorder(
-                new EmptyBorder(
-                        12,
-                        resposta ? 25 : 12,
-                        12,
-                        12
-                )
-        );
-
+        cartao.setBorder(new EmptyBorder(12, resposta ? 25 : 12, 12, 12));
         cartao.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cartao.setPreferredSize(new Dimension(LARGURA, 145));
+        cartao.setMaximumSize(new Dimension(LARGURA, 145));
 
-        cartao.setPreferredSize(
-                new Dimension(LARGURA, 145)
-        );
+        String titulo = resposta ? "Resposta de " + c.getAutor() : c.getAutor();
+        cartao.add(rotulo(titulo, 18, true), BorderLayout.NORTH);
 
-        cartao.setMaximumSize(
-                new Dimension(LARGURA, 145)
-        );
-
-        String titulo = resposta
-                ? "Resposta de " + c.autor
-                : c.autor;
-
-        cartao.add(
-                rotulo(titulo, 18, true),
-                BorderLayout.NORTH
-        );
-
-        JTextArea mensagem = textoLongo(
-                c.texto, 17, fundoCartao
-        );
-
+        JTextArea mensagem = textoLongo(c.getTexto(), 17, fundoCartao);
         cartao.add(mensagem, BorderLayout.CENTER);
 
         JPanel botoes = painel(fundoCartao);
+        botoes.setLayout(new FlowLayout(FlowLayout.LEFT, 8, 0));
 
-        botoes.setLayout(
-                new FlowLayout(FlowLayout.LEFT, 8, 0)
-        );
-
-        JButton curtir = botao(
-                "Curtir (" + c.curtidas + ")", CORAL
-        );
-
+        JButton curtir = botao("Curtir (" + c.getCurtidas() + ")", CORAL);
         curtir.addActionListener(e -> {
-
-            c.curtidas++;
-
-            if (!salvarComentarios()) {
-                c.curtidas--;
-            }
-
+            c.setCurtidas(c.getCurtidas() + 1);
+            comentarioDAO.curtir(c.getId());
             atualizarComentarios();
         });
 
         botoes.add(curtir);
 
         if (!resposta) {
-
-            JButton responder = botao(
-                    "Responder", ROXO
-            );
-
+            JButton responder = botao("Responder", ROXO);
             responder.addActionListener(e -> {
-
-                respondendoA = c.id;
-
-                indicadorResposta.setText(
-                        "Respondendo a " + c.autor + ":"
-                );
-
+                respondendoA = c.getId();
+                indicadorResposta.setText("Respondendo a " + c.getAutor() + ":");
                 campoComentario.requestFocusInWindow();
             });
 
@@ -1302,7 +787,6 @@ public class TelaDetalhesFilme extends JPanel {
         }
 
         cartao.add(botoes, BorderLayout.SOUTH);
-
         return cartao;
     }
 }
