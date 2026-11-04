@@ -2,7 +2,7 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-/** Compatibilidade com a tela antiga; agora mostra somente contas reais. */
+
 public class TelaPessoas extends JFrame {
     public TelaPessoas(Filme filme,TelaDescobrir anterior) {
         setTitle("CineMatch - Pessoas que curtiram "+filme.getTitulo());
