@@ -20,11 +20,8 @@ public class TelaDescobrir extends JFrame {
     // PERSISTÊNCIA & LISTAS DE FILMES
     private final FilmeDAO filmeDAO;
     private final List<Filme> filmes;
-    private final ArrayList<Filme> curtidos = new ArrayList<>();
-    private final ArrayList<Filme> salvos = new ArrayList<>();
+    private final PreferenciaFilmeDAO preferencias = new PreferenciaFilmeDAO();
 
-    // Comentários da demonstração de matches
-    private final Map<String, String> comentarios = new HashMap<>();
 
     private int indiceAtual = 0;
     private Filme filmeCurtido;
@@ -284,7 +281,7 @@ public class TelaDescobrir extends JFrame {
             if (pessoas) {
                 mostrarDescoberta();
             } else {
-                new TelaMeuPerfil(null);
+                new TelaMeuPerfil(Sessao.getUsuario());
             }
         });
 
@@ -440,31 +437,28 @@ public class TelaDescobrir extends JFrame {
 
         // SALVAR
         acoes.add(acaoCircular("★", "Salvar", ROXO_BOTAO, DOURADO, () -> {
-            if (!salvos.contains(atual)) {
-                salvos.add(atual);
+            if (!Sessao.adulta() || !preferencias.marcarSalvo(Sessao.getUsuario().getId(), atual.getId())) {
+                JOptionPane.showMessageDialog(this, "Não foi possível salvar. Entre na sua conta.");
+                return;
             }
-            // Sincroniza a avaliação no banco H2
-            filmeDAO.atualizarAvaliacao(atual);
-
             indiceAtual++;
             mostrarDescoberta();
         }));
 
         // CURTIR
         acoes.add(acaoCircular("♥", "Curtir", CORAL, Color.WHITE, () -> {
-            if (!curtidos.contains(atual)) {
-                curtidos.add(atual);
+            if (!Sessao.adulta() || !preferencias.marcarCurtido(Sessao.getUsuario().getId(), atual.getId())) {
+                JOptionPane.showMessageDialog(this, "Não foi possível curtir. Entre na sua conta.");
+                return;
             }
-            atual.curtir();
             filmeCurtido = atual;
-
-            // Sincroniza a curtida na tabela de filmes do H2
-            filmeDAO.atualizarAvaliacao(atual);
-
             indiceAtual++;
 
-            // MOSTRA MATCHES APENAS NA PRIMEIRA CURTIDA
-            if (primeiraCurtida) {
+            // Preserva a primeira exibição de matches, e também mostra
+            // novas compatibilidades reais caso outro filme gere conexões.
+            boolean temPessoas = !new MatchDAO().sugerir(
+                    Sessao.getUsuario().getId(), atual.getId()).isEmpty();
+            if (primeiraCurtida || temPessoas) {
                 primeiraCurtida = false;
                 mostrarPessoas();
             } else {
@@ -503,75 +497,12 @@ public class TelaDescobrir extends JFrame {
         return p;
     }
 
-    // EDITOR DE COMENTÁRIOS DOS MATCHES
-    private void comentarFilme(Filme filme, boolean voltarPessoas) {
-        JPanel tela = transparente(new BorderLayout(20, 20));
-        tela.setOpaque(true);
-        tela.setBackground(FUNDO);
-        tela.setBorder(new EmptyBorder(20, 40, 30, 40));
 
-        tela.add(topo(voltarPessoas), BorderLayout.NORTH);
-
-        JPanel conteudo = transparente(new BorderLayout(25, 0));
-        conteudo.add(capa(filme, 230, 330), BorderLayout.WEST);
-
-        Cartao editor = new Cartao(CARD, 26);
-        editor.setLayout(new BorderLayout(0, 15));
-        editor.setBorder(new EmptyBorder(25, 25, 25, 25));
-
-        editor.add(
-                label("Por que você gosta de " + filme.getTitulo() + "?", 20, TEXTO, true),
-                BorderLayout.NORTH
-        );
-
-        JTextArea campo = new JTextArea(comentarios.getOrDefault(filme.getTitulo(), ""));
-        campo.setLineWrap(true);
-        campo.setWrapStyleWord(true);
-        campo.setFont(new Font("Times New Roman", Font.PLAIN, 18));
-        campo.setForeground(TEXTO);
-        campo.setCaretColor(TEXTO);
-        campo.setBackground(ROXO_BOTAO);
-        campo.setBorder(new EmptyBorder(15, 15, 15, 15));
-
-        editor.add(new JScrollPane(campo), BorderLayout.CENTER);
-        conteudo.add(editor, BorderLayout.CENTER);
-
-        tela.add(conteudo, BorderLayout.CENTER);
-
-        JPanel botoes = transparente(new FlowLayout(FlowLayout.RIGHT, 12, 0));
-
-        Runnable voltar = () -> {
-            if (voltarPessoas) {
-                mostrarPessoas();
-            } else {
-                mostrarDescoberta();
-            }
-        };
-
-        JButton cancelar = botao("Cancelar", ROXO_BOTAO);
-        cancelar.addActionListener(e -> voltar.run());
-
-        JButton salvar = botao("Salvar comentário", CORAL);
-        salvar.addActionListener(e -> {
-            String comentario = campo.getText().trim();
-            if (comentario.isEmpty()) {
-                comentarios.remove(filme.getTitulo());
-            } else {
-                comentarios.put(filme.getTitulo(), comentario);
-            }
-            voltar.run();
-        });
-
-        botoes.add(cancelar);
-        botoes.add(salvar);
-
-        tela.add(botoes, BorderLayout.SOUTH);
-        atualizar(tela);
-    }
-
-    // TELA DE POSSÍVEIS MATCHES
+    // =========================================
+    // MATCHES REAIS: substitui os seis perfis fictícios.
+    // =========================================
     private void mostrarPessoas() {
-        if (filmeCurtido == null) {
+        if (filmeCurtido == null || !Sessao.ativa()) {
             mostrarDescoberta();
             return;
         }
@@ -580,111 +511,120 @@ public class TelaDescobrir extends JFrame {
         tela.setOpaque(true);
         tela.setBackground(FUNDO);
         tela.setBorder(new EmptyBorder(10, 22, 22, 22));
-
         tela.add(topo(true), BorderLayout.NORTH);
 
         JPanel conteudo = transparente(new BorderLayout(20, 0));
         JPanel esquerda = transparente(new BorderLayout(0, 14));
-        esquerda.setPreferredSize(new Dimension(300, 0));
+        esquerda.setPreferredSize(new Dimension(290, 0));
+        esquerda.add(cardFilme(filmeCurtido, 250, 330, true), BorderLayout.NORTH);
 
-        JPanel filme = cardFilme(filmeCurtido, 250, 330, true);
-        esquerda.add(filme, BorderLayout.NORTH);
-
-        // COMENTÁRIO SOBRE O FILME CURTIDO
-        Cartao comentario = new Cartao(CARD, 24);
-        comentario.setLayout(new BorderLayout(0, 12));
-        comentario.setBorder(new EmptyBorder(18, 18, 18, 18));
-
-        comentario.add(label("Seu comentário", 16, CORAL, true), BorderLayout.NORTH);
-
-        JTextArea resumo = new JTextArea(
-                comentarios.getOrDefault(filmeCurtido.getTitulo(), "Escreva o que você achou deste filme...")
-        );
-        resumo.setLineWrap(true);
-        resumo.setWrapStyleWord(true);
-        resumo.setEditable(false);
-        resumo.setOpaque(false);
-        resumo.setForeground(SUAVE);
-        resumo.setFont(new Font("Times New Roman", Font.PLAIN, 15));
-        resumo.setRows(3);
-
-        comentario.add(resumo, BorderLayout.CENTER);
-
-        JButton editar = botao("Escrever / editar", ROXO_BOTAO);
-        editar.addActionListener(e -> comentarFilme(filmeCurtido, true));
-
-        comentario.add(editar, BorderLayout.SOUTH);
-        esquerda.add(comentario, BorderLayout.CENTER);
-
+        JPanel contexto = new Cartao(CARD, 24);
+        contexto.setLayout(new BorderLayout(0, 12));
+        contexto.setBorder(new EmptyBorder(18, 18, 18, 18));
+        contexto.add(label("Um filme em comum!", 20, CORAL, true), BorderLayout.NORTH);
+        JTextArea explicacao = new JTextArea(
+            "Estes perfis também curtiram este filme. " +
+            "A afinidade considera filmes e gêneros favoritos.");
+        explicacao.setEditable(false);
+        explicacao.setLineWrap(true);
+        explicacao.setWrapStyleWord(true);
+        explicacao.setOpaque(false);
+        explicacao.setForeground(SUAVE);
+        explicacao.setFont(new Font("Times New Roman", Font.PLAIN, 16));
+        contexto.add(explicacao, BorderLayout.CENTER);
+        JButton detalhes = botao("Ver detalhes e comentar", ROXO_BOTAO);
+        detalhes.addActionListener(e -> mostrarDetalhes(filmeCurtido));
+        contexto.add(detalhes, BorderLayout.SOUTH);
+        esquerda.add(contexto, BorderLayout.CENTER);
         conteudo.add(esquerda, BorderLayout.WEST);
 
-        // PERFIS DEMONSTRATIVOS
-        JPanel grade = transparente(new GridLayout(0, 2, 12, 12));
-        grade.setBorder(new EmptyBorder(2, 2, 2, 8));
+        java.util.List<AlgoritmoMatch.Resultado> sugestoes =
+            new MatchDAO().sugerir(Sessao.getUsuario().getId(), filmeCurtido.getId());
 
-        grade.add(cardPessoa("Marina, 25", "Amizades e relacionamento", "Fantasia - Animação", "Coraline me marcou muito pela atmosfera única!"));
-        grade.add(cardPessoa("Lucas, 27", "Amizades", "Animação - Terror", "A estética e a história são surreais, amo!"));
-        grade.add(cardPessoa("Camila, 24", "Relacionamento", "Fantasia - Drama", "Um dos meus filmes favoritos da vida!"));
-        grade.add(cardPessoa("Rafael, 26", "Amizades e relacionamento", "Animação - Aventura", "A trilha sonora é perfeita!"));
-        grade.add(cardPessoa("Beatriz, 23", "Amizades", "Fantasia - Mistério", "A Coraline é muito inspiradora!"));
-        grade.add(cardPessoa("Thiago, 28", "Relacionamento", "Animação - Suspense", "Esse filme tem uma atmosfera incrível!"));
+        JPanel grade = transparente(new GridBagLayout());
+        grade.setBorder(new EmptyBorder(4, 4, 4, 8));
+        GridBagConstraints pos = new GridBagConstraints();
+        pos.insets = new Insets(4, 4, 8, 8);
+        pos.anchor = GridBagConstraints.NORTHWEST;
+        pos.fill = GridBagConstraints.NONE;
 
-        JScrollPane rolagem = new JScrollPane(grade);
+        if (sugestoes.isEmpty()) {
+            JPanel vazio = new Cartao(CARD, 24);
+            vazio.setLayout(new BorderLayout());
+            vazio.setBorder(new EmptyBorder(24, 24, 24, 24));
+            JTextArea mensagem = new JTextArea(
+                "Ainda não há outra pessoa cadastrada que tenha curtido este filme e tenha " +
+                "preferências compatíveis com as suas.\n\n" +
+                "Nenhum perfil fictício será mostrado. Quando outra conta curtir " +
+                "este filme, ela poderá aparecer aqui.");
+            mensagem.setLineWrap(true);
+            mensagem.setWrapStyleWord(true);
+            mensagem.setEditable(false);
+            mensagem.setOpaque(false);
+            mensagem.setForeground(TEXTO);
+            mensagem.setFont(new Font("Times New Roman", Font.PLAIN, 18));
+            vazio.setPreferredSize(new Dimension(540, 170));
+            vazio.add(mensagem);
+            pos.gridx = 0; pos.gridy = 0; pos.gridwidth = 2;
+            grade.add(vazio, pos);
+        } else {
+            for (int i = 0; i < sugestoes.size(); i++) {
+                pos.gridx = i % 2;
+                pos.gridy = i / 2;
+                pos.gridwidth = 1;
+                grade.add(cardPessoa(sugestoes.get(i)), pos);
+            }
+        }
+        // Ocupa somente o espaço necessário, sem esticar os cartões.
+        pos.gridx = 0;
+        pos.gridy = Math.max(1, (sugestoes.size() + 1) / 2);
+        pos.gridwidth = 2;
+        pos.weighty = 1;
+        pos.fill = GridBagConstraints.VERTICAL;
+        grade.add(Box.createVerticalGlue(), pos);
+
+        JScrollPane rolagem = new JScrollPane(grade,
+            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         rolagem.setBorder(null);
-        rolagem.getViewport().setOpaque(false);
-        rolagem.setOpaque(false);
-        rolagem.getVerticalScrollBar().setUnitIncrement(20);
-
+        rolagem.getViewport().setBackground(FUNDO);
+        rolagem.getVerticalScrollBar().setUnitIncrement(18);
         conteudo.add(rolagem, BorderLayout.CENTER);
-        tela.add(conteudo, BorderLayout.CENTER);
 
+        tela.add(conteudo, BorderLayout.CENTER);
         atualizar(tela);
     }
 
-    // CARTÕES DOS POSSÍVEIS MATCHES
-    private JPanel cardPessoa(String nome, String interesse, String generos, String frase) {
+    private JPanel cardPessoa(AlgoritmoMatch.Resultado resultado) {
+        Usuario pessoa = resultado.usuario;
         Cartao card = new Cartao(CARD, 26);
         card.setLayout(new BorderLayout(0, 12));
         card.setBorder(new EmptyBorder(16, 16, 16, 16));
 
         JPanel cab = transparente(new BorderLayout(10, 0));
-
-        JLabel avatar = new JLabel("●", SwingConstants.CENTER);
-        avatar.setForeground(CORAL);
-        avatar.setFont(new Font("SansSerif", Font.BOLD, 48));
-        avatar.setPreferredSize(new Dimension(62, 65));
-
+        JLabel avatar = label("●", 40, CORAL, true);
+        avatar.setHorizontalAlignment(SwingConstants.CENTER);
+        avatar.setPreferredSize(new Dimension(46, 55));
         cab.add(avatar, BorderLayout.WEST);
 
         JPanel dados = transparente(new GridLayout(2, 1, 0, 3));
-        dados.add(label(nome, 17, TEXTO, true));
-        dados.add(label(interesse, 12, SUAVE, false));
-
+        dados.add(label(pessoa.getNome() + ", " + pessoa.getIdade(), 18, TEXTO, true));
+        dados.add(label(resultado.percentual + "% de afinidade", 17, CORAL, true));
         cab.add(dados, BorderLayout.CENTER);
         card.add(cab, BorderLayout.NORTH);
 
-        JPanel centro = transparente(new BorderLayout(0, 10));
-        centro.add(label(generos, 13, CORAL, true), BorderLayout.NORTH);
-
-        JTextArea citacao = new JTextArea("“" + frase + "”");
-        citacao.setEditable(false);
-        citacao.setLineWrap(true);
-        citacao.setWrapStyleWord(true);
-        citacao.setOpaque(false);
-        citacao.setForeground(SUAVE);
-        citacao.setFont(new Font("Times New Roman", Font.PLAIN, 15));
-
-        centro.add(citacao, BorderLayout.CENTER);
+        JPanel centro = transparente(new GridLayout(3, 1, 0, 3));
+        centro.add(label(resultado.motivo, 15, TEXTO, false));
+        centro.add(label(resultado.filmesEmComum + " filmes em comum", 15, SUAVE, false));
+        centro.add(label(resultado.generosEmComum + " gêneros favoritos em comum", 14, SUAVE, false));
         card.add(centro, BorderLayout.CENTER);
 
-        JButton ver = botao("Ver perfil", CORAL);
+        JButton ver = botao("Ver perfil e conectar", CORAL);
         ver.addActionListener(e ->
-                new TelaPerfilPessoa(nome, interesse, frase, filmeCurtido.getTitulo())
+            new TelaPerfilPessoa(pessoa, filmeCurtido, resultado)
         );
-
         card.add(ver, BorderLayout.SOUTH);
-        card.setPreferredSize(new Dimension(235, 220));
-
+        card.setPreferredSize(new Dimension(270, 208));
         return card;
     }
 }

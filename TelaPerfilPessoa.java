@@ -1,312 +1,123 @@
-
 import java.awt.*;
+import java.io.File;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
+/** Perfil público de outra pessoa, sem mostrar dados privados ou e-mail. */
 public class TelaPerfilPessoa extends JFrame {
+    private final Color FUNDO=new Color(43,22,70), CARD=new Color(56,32,82);
+    private final Color CORAL=new Color(255,98,92), ROXO=new Color(65,37,93);
+    private final Color TEXTO=new Color(247,243,250), SUAVE=new Color(220,204,232);
 
-    private final Color FUNDO = new Color(18, 18, 30);
-    private final Color CARD = new Color(32, 32, 48);
-    private final Color ROSA = new Color(255, 45, 105);
-    private final Color CINZA = new Color(180, 180, 195);
+    public TelaPerfilPessoa(Usuario pessoa, Filme comum, AlgoritmoMatch.Resultado resultado) {
+        setTitle("CineMatch - Perfil de " + pessoa.getNome());
+        setSize(720,740);setMinimumSize(new Dimension(580,550));
+        setLocationRelativeTo(null);setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        JPanel fundo=new JPanel(new BorderLayout(12,12));
+        fundo.setBackground(FUNDO);fundo.setBorder(new EmptyBorder(20,30,20,30));
 
-    // Compatibilidade com a TelaDescobrir atual:
-    // TelaPerfilPessoa(String, String, String, String)
-    public TelaPerfilPessoa(
-            String nome,
-            String idade,
-            String intencao,
-            String comentario) {
+        JPanel topo=new JPanel(new BorderLayout());topo.setOpaque(false);
+        JLabel marca=new JLabel("CineMatch");marca.setForeground(TEXTO);
+        marca.setFont(new Font("Nimbus Sans",Font.BOLD,30));topo.add(marca,BorderLayout.WEST);
+        JButton voltar=botao("Fechar",ROXO);voltar.addActionListener(e->dispose());
+        topo.add(voltar,BorderLayout.EAST);fundo.add(topo,BorderLayout.NORTH);
 
-        this(
-            nome,
-            converterIdade(idade),
-            intencao,
-            "Cinema",
-            comentario,
-            null
-        );
-    }
-
-    // Versao completa com filme e generos
-    public TelaPerfilPessoa(
-            String nome,
-            int idade,
-            String intencao,
-            String generos,
-            String comentario,
-            Filme filme) {
-
-        setTitle("CineMatch - Perfil");
-        setSize(720, 820);
-        setMinimumSize(new Dimension(580, 650));
-        setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
-        JPanel principal = new JPanel(new BorderLayout());
-        principal.setBackground(FUNDO);
-        principal.setBorder(
-            new EmptyBorder(25, 35, 25, 35)
-        );
-
-        JLabel logo = new JLabel("♥ CineMatch");
-        logo.setFont(new Font("Arial", Font.BOLD, 30));
-        logo.setForeground(ROSA);
-        logo.setHorizontalAlignment(SwingConstants.CENTER);
-
-        principal.add(logo, BorderLayout.NORTH);
-
-        JPanel conteudo = new JPanel();
-        conteudo.setBackground(FUNDO);
-        conteudo.setLayout(
-            new BoxLayout(conteudo, BoxLayout.Y_AXIS)
-        );
-
-        conteudo.add(Box.createVerticalStrut(25));
-
-        JPanel foto = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON
-                );
-
-                g2.setColor(ROSA);
-                g2.fillOval(5, 5, 140, 140);
-
-                g2.setColor(Color.WHITE);
-                g2.setFont(
-                    new Font("Arial", Font.BOLD, 55)
-                );
-
-                String inicial =
-                    nome == null || nome.isEmpty()
-                    ? "?"
-                    : nome.substring(0, 1).toUpperCase();
-
-                FontMetrics fm = g2.getFontMetrics();
-
-                g2.drawString(
-                    inicial,
-                    75 - fm.stringWidth(inicial) / 2,
-                    93
-                );
-
-                g2.dispose();
-            }
-        };
-
-        foto.setOpaque(false);
-        foto.setPreferredSize(
-            new Dimension(150, 150)
-        );
-        foto.setMaximumSize(
-            new Dimension(150, 150)
-        );
+        JPanel coluna=new JPanel();coluna.setOpaque(false);
+        coluna.setLayout(new BoxLayout(coluna,BoxLayout.Y_AXIS));
+        JLabel foto=new JLabel("●",SwingConstants.CENTER);
+        foto.setForeground(CORAL);foto.setFont(new Font("SansSerif",Font.PLAIN,85));
+        foto.setPreferredSize(new Dimension(140,140));foto.setMaximumSize(new Dimension(140,140));
         foto.setAlignmentX(Component.CENTER_ALIGNMENT);
+        if(pessoa.getFoto()!=null&&!pessoa.getFoto().isBlank()){
+            File arquivo=new File(pessoa.getFoto());
+            if(arquivo.isFile()){
+                ImageIcon icone=new ImageIcon(arquivo.getAbsolutePath());
+                if(icone.getIconWidth()>0){
+                    double k=Math.min(140.0/icone.getIconWidth(),140.0/icone.getIconHeight());
+                    Image imagem=icone.getImage().getScaledInstance(
+                        (int)(icone.getIconWidth()*k),(int)(icone.getIconHeight()*k),Image.SCALE_SMOOTH);
+                    foto.setText("");foto.setIcon(new ImageIcon(imagem));
+                }
+            }
+        }
+        coluna.add(foto);coluna.add(Box.createVerticalStrut(12));
+        JLabel nome=texto(pessoa.getNome()+(pessoa.getIdade()>0?", "+pessoa.getIdade():""),26,TEXTO,true);
+        nome.setAlignmentX(Component.CENTER_ALIGNMENT);
+        coluna.add(nome);coluna.add(Box.createVerticalStrut(12));
+        if(resultado!=null){
+            JLabel compat=texto(resultado.percentual+"% de afinidade • "+
+                resultado.filmesEmComum+" filmes em comum",20,CORAL,true);
+            compat.setAlignmentX(Component.CENTER_ALIGNMENT);
+            coluna.add(compat);coluna.add(Box.createVerticalStrut(12));
+        }
+        secao(coluna,"O que procura",pessoa.getIntencao());
+        secao(coluna,"Sobre mim",pessoa.getBio()==null||pessoa.getBio().isBlank()?
+            "Esta pessoa ainda não escreveu uma apresentação.":pessoa.getBio());
+        secao(coluna,"Gêneros favoritos",pessoa.getGenerosFavoritos()==null||
+            pessoa.getGenerosFavoritos().isBlank()?"Nenhum gênero marcado.":pessoa.getGenerosFavoritos().replace("|",", "));
+        if(comum!=null)secao(coluna,"Filme em comum",comum.getTitulo());
+        if(pessoa.isMostrarInformacoes()){
+            secao(coluna,"Identidade de gênero",pessoa.getIdentidadeGenero());
+            secao(coluna,"Orientação (informação pública autorizada)",pessoa.getOrientacao());
+            secao(coluna,"Interesse em conhecer",pessoa.getInteresse());
+        }
+        JScrollPane rolagem=new JScrollPane(coluna,JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        rolagem.getViewport().setBackground(FUNDO);
+        rolagem.setBorder(null);rolagem.getVerticalScrollBar().setUnitIncrement(18);
+        fundo.add(rolagem,BorderLayout.CENTER);
 
-        conteudo.add(foto);
-        conteudo.add(Box.createVerticalStrut(20));
-
-        JLabel nomePessoa = criarTexto(
-            nome + ", " + idade,
-            29,
-            Color.WHITE,
-            Font.BOLD
-        );
-
-        JLabel objetivo = criarTexto(
-            intencao,
-            17,
-            ROSA,
-            Font.BOLD
-        );
-
-        JLabel interesses = criarTexto(
-            generos,
-            15,
-            CINZA,
-            Font.PLAIN
-        );
-
-        conteudo.add(nomePessoa);
-        conteudo.add(Box.createVerticalStrut(10));
-        conteudo.add(objetivo);
-        conteudo.add(Box.createVerticalStrut(12));
-        conteudo.add(interesses);
-        conteudo.add(Box.createVerticalStrut(28));
-
-        String nomeFilme =
-            filme == null
-            ? "Não informado"
-            : filme.getTitulo();
-
-        JLabel tituloFilme = criarTexto(
-            "♥ Filme em comum: " + nomeFilme,
-            19,
-            Color.WHITE,
-            Font.BOLD
-        );
-
-        conteudo.add(tituloFilme);
-        conteudo.add(Box.createVerticalStrut(15));
-
-        JPanel caixaComentario = new JPanel(
-            new BorderLayout()
-        );
-
-        caixaComentario.setBackground(CARD);
-        caixaComentario.setBorder(
-            new EmptyBorder(20, 22, 20, 22)
-        );
-        caixaComentario.setMaximumSize(
-            new Dimension(Integer.MAX_VALUE, 120)
-        );
-        caixaComentario.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-
-        JTextArea textoComentario = new JTextArea(
-            "\"" + (
-                comentario == null
-                ? ""
-                : comentario
-            ) + "\""
-        );
-
-        textoComentario.setEditable(false);
-        textoComentario.setLineWrap(true);
-        textoComentario.setWrapStyleWord(true);
-        textoComentario.setBackground(CARD);
-        textoComentario.setForeground(Color.WHITE);
-        textoComentario.setFont(
-            new Font("Arial", Font.ITALIC, 16)
-        );
-
-        caixaComentario.add(
-            textoComentario,
-            BorderLayout.CENTER
-        );
-
-        conteudo.add(caixaComentario);
-        conteudo.add(Box.createVerticalStrut(25));
-
-        JButton conectar = criarBotao(
-            "♥ Solicitar conexão",
-            ROSA
-        );
-
-        conectar.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-        conectar.setMaximumSize(
-            new Dimension(440, 52)
-        );
-
-        conectar.addActionListener(e -> {
-            conectar.setText("♥ Solicitação registrada");
+        JButton conectar=botao("Solicitar conexão",CORAL);
+        MatchDAO match=new MatchDAO();
+        Usuario eu=Sessao.getUsuario();
+        if(eu==null||pessoa.getId()<=0||pessoa.getId()==eu.getId()){
             conectar.setEnabled(false);
+        }else{
+            String status=match.statusEntre(eu.getId(),pessoa.getId());
+            if(status!=null){conectar.setText("Conexão: "+status);conectar.setEnabled(false);}
+        }
+        conectar.addActionListener(e->{
+            if(!Sessao.ativa())return;
+            if(match.solicitar(Sessao.getUsuario().getId(),pessoa.getId())){
+                JOptionPane.showMessageDialog(this,"Solicitação enviada para "+pessoa.getNome()+"!");
+                conectar.setText("Solicitação enviada");conectar.setEnabled(false);
+            }else JOptionPane.showMessageDialog(this,
+                "Não foi possível enviar: confira se o filme está em comum ou se já existe uma solicitação.");
         });
-
-        conteudo.add(conectar);
-        conteudo.add(Box.createVerticalStrut(15));
-
-        JLabel aviso = criarTexto(
-            "A conexão depende da aceitação da outra pessoa.",
-            13,
-            CINZA,
-            Font.PLAIN
-        );
-
-        conteudo.add(aviso);
-        conteudo.add(Box.createVerticalStrut(25));
-
-        JButton voltar = criarBotao(
-            "← Voltar",
-            new Color(65, 65, 85)
-        );
-
-        voltar.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-        voltar.setMaximumSize(
-            new Dimension(440, 45)
-        );
-
-        voltar.addActionListener(e -> dispose());
-
-        conteudo.add(voltar);
-
-        JScrollPane scroll = new JScrollPane(conteudo);
-        scroll.setBorder(null);
-        scroll.getViewport().setBackground(FUNDO);
-        scroll.getVerticalScrollBar()
-            .setUnitIncrement(16);
-
-        principal.add(
-            scroll,
-            BorderLayout.CENTER
-        );
-
-        setContentPane(principal);
-        setVisible(true);
+        fundo.add(conectar,BorderLayout.SOUTH);
+        setContentPane(fundo);setVisible(true);
     }
-
-    private static int converterIdade(String idade) {
-
-        if (idade == null) {
-            return 18;
-        }
-
-        try {
-            return Integer.parseInt(
-                idade.replaceAll("[^0-9]", "")
-            );
-        } catch (NumberFormatException e) {
-            return 18;
-        }
+    /** Compatibilidade com as assinaturas antigas da interface. */
+    public TelaPerfilPessoa(String nome,String intencao,String comentario,String filme){
+        this(perfilDemonstrativo(nome,intencao,comentario),null,null);
     }
-
-    private JLabel criarTexto(
-            String texto,
-            int tamanho,
-            Color cor,
-            int estilo) {
-
-        JLabel label = new JLabel(texto);
-        label.setFont(
-            new Font("Arial", estilo, tamanho)
-        );
-        label.setForeground(cor);
-        label.setAlignmentX(
-            Component.CENTER_ALIGNMENT
-        );
-
-        return label;
+    public TelaPerfilPessoa(String nome,int idade,String intencao,String generos,String comentario,Filme filme){
+        this(perfilDemonstrativo(nome,intencao,comentario),filme,null);
     }
-
-    private JButton criarBotao(
-            String texto,
-            Color cor) {
-
-        JButton botao = new JButton(texto);
-        botao.setBackground(cor);
-        botao.setForeground(Color.WHITE);
-        botao.setFont(
-            new Font("Arial", Font.BOLD, 16)
-        );
-        botao.setFocusPainted(false);
-        botao.setCursor(
-            new Cursor(Cursor.HAND_CURSOR)
-        );
-        botao.setBorder(
-            new EmptyBorder(13, 18, 13, 18)
-        );
-
-        return botao;
+    private static Usuario perfilDemonstrativo(String nome,String intencao,String bio){
+        Usuario u=new Usuario();u.setNome(nome);u.setIntencao(intencao);u.setBio(bio);return u;
+    }
+    private void secao(JPanel coluna,String titulo,String valor){
+        JLabel label=texto(titulo,19,CORAL,true);
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        coluna.add(label);coluna.add(Box.createVerticalStrut(6));
+        JTextArea campo=new JTextArea(valor==null?"Não informado":valor);
+        campo.setFont(new Font("Times New Roman",Font.PLAIN,18));
+        campo.setForeground(SUAVE);campo.setBackground(CARD);
+        campo.setBorder(new EmptyBorder(13,13,13,13));
+        campo.setEditable(false);campo.setLineWrap(true);campo.setWrapStyleWord(true);
+        campo.setFocusable(false);campo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        campo.setRows(Math.max(2,Math.min(5,1+campo.getText().length()/55)));
+        campo.setMaximumSize(new Dimension(Integer.MAX_VALUE,campo.getPreferredSize().height));
+        coluna.add(campo);coluna.add(Box.createVerticalStrut(15));
+    }
+    private JLabel texto(String s,int tam,Color c,boolean bold){
+        JLabel l=new JLabel(s);l.setForeground(c);
+        l.setFont(new Font("Times New Roman",bold?Font.BOLD:Font.PLAIN,tam));return l;
+    }
+    private JButton botao(String texto,Color cor){
+        JButton b=new JButton(texto);b.setFont(new Font("Times New Roman",Font.BOLD,17));
+        b.setBackground(cor);b.setForeground(Color.WHITE);b.setFocusPainted(false);
+        b.setBorder(new EmptyBorder(12,18,12,18));return b;
     }
 }

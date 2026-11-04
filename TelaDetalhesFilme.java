@@ -253,7 +253,6 @@ public class TelaDetalhesFilme extends JPanel {
         // SEÇÃO DE COMENTÁRIOS
         JPanel secaoComentarios = painel(FUNDO);
         secaoComentarios.setLayout(new BoxLayout(secaoComentarios, BoxLayout.Y_AXIS));
-        secaoComentarios.setPreferredSize(new Dimension(LARGURA, 350));
         secaoComentarios.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel tituloComentarios = rotulo("Comentários sobre o filme", 24, true);
@@ -265,7 +264,6 @@ public class TelaDetalhesFilme extends JPanel {
         lista.setLayout(new BoxLayout(lista, BoxLayout.Y_AXIS));
         lista.setBackground(FUNDO);
         lista.setAlignmentX(Component.LEFT_ALIGNMENT);
-        lista.setPreferredSize(new Dimension(LARGURA, 0));
         lista.setMaximumSize(new Dimension(LARGURA, Integer.MAX_VALUE));
 
         secaoComentarios.add(lista);
@@ -300,7 +298,7 @@ public class TelaDetalhesFilme extends JPanel {
 
         // AÇÕES DOS COMENTÁRIOS
         JPanel acoes = painel(FUNDO);
-        acoes.setLayout(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acoes.setLayout(new FlowLayout(FlowLayout.LEFT, 8, 0));
 
         JButton cancelar = botao("Cancelar resposta", ROXO);
         cancelar.addActionListener(e -> {
@@ -311,7 +309,7 @@ public class TelaDetalhesFilme extends JPanel {
         JButton publicar = botao("Publicar", CORAL);
         publicar.addActionListener(e -> publicar());
 
-        JButton limpar = botao("Limpar comentários deste filme", ROXO);
+        JButton limpar = botao("Apagar meus comentários deste filme", ROXO);
         limpar.addActionListener(e -> limparComentariosFilme());
 
         acoes.add(limpar);
@@ -644,7 +642,8 @@ public class TelaDetalhesFilme extends JPanel {
     private void limparComentariosFilme() {
         int escolha = JOptionPane.showConfirmDialog(
                 this,
-                "Apagar todos os comentários e respostas de " + filme.getTitulo() + "?\nEssa ação não pode ser desfeita.",
+                "Apagar os comentários que você publicou em " + filme.getTitulo()
+                + " e as respostas a eles?\nEssa ação não pode ser desfeita.",
                 "Confirmar limpeza",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
@@ -654,14 +653,19 @@ public class TelaDetalhesFilme extends JPanel {
             return;
         }
 
-        comentarioDAO.limparPorFilme(filme.getId());
+        if (!Sessao.adulta()) {
+            JOptionPane.showMessageDialog(this, "Apenas contas verificadas como 18+ podem comentar.");
+            return;
+        }
+        if (!comentarioDAO.limparMeusPorFilme(filme.getId(), Sessao.getUsuario().getId())) {
+            JOptionPane.showMessageDialog(this, "Não foi possível apagar seus comentários.");
+            return;
+        }
         carregarComentarios();
-
         respondendoA = 0;
         indicadorResposta.setText("Escreva seu comentário:");
         atualizarComentarios();
-
-        JOptionPane.showMessageDialog(this, "Comentários deste filme apagados.");
+        JOptionPane.showMessageDialog(this, "Seus comentários de teste deste filme foram apagados.");
     }
 
     // =========================================
@@ -676,13 +680,11 @@ public class TelaDetalhesFilme extends JPanel {
             return;
         }
 
-        if (autor == null || autor.isEmpty()) {
-            String nome = JOptionPane.showInputDialog(this, "Qual nome deseja exibir?");
-            if (nome == null || limpar(nome).isEmpty()) {
-                return;
-            }
-            autor = limpar(nome);
+        if (!Sessao.adulta()) {
+            JOptionPane.showMessageDialog(this, "Complete a data de nascimento (18+) em Meu Perfil antes de comentar.");
+            return;
         }
+        autor = Sessao.getUsuario().getNome();
 
         Comentario novo = new Comentario(
                 0,
@@ -693,8 +695,12 @@ public class TelaDetalhesFilme extends JPanel {
                 mensagem
         );
         novo.setFilmeId(filme.getId());
+        novo.setAutorId(Sessao.getUsuario().getId());
 
-        comentarioDAO.inserir(novo);
+        if (!comentarioDAO.inserir(novo)) {
+            JOptionPane.showMessageDialog(this, "Não foi possível publicar o comentário.");
+            return;
+        }
 
         campoComentario.setText("");
         respondendoA = 0;
@@ -754,8 +760,10 @@ public class TelaDetalhesFilme extends JPanel {
         cartao.setLayout(new BorderLayout(8, 8));
         cartao.setBorder(new EmptyBorder(12, resposta ? 25 : 12, 12, 12));
         cartao.setAlignmentX(Component.LEFT_ALIGNMENT);
-        cartao.setPreferredSize(new Dimension(LARGURA, 145));
-        cartao.setMaximumSize(new Dimension(LARGURA, 145));
+        int linhasEstimadas = Math.max(2, 1 + c.getTexto().length() / 75);
+        int alturaCartao = 108 + linhasEstimadas * 22;
+        cartao.setPreferredSize(new Dimension(LARGURA, alturaCartao));
+        cartao.setMaximumSize(new Dimension(LARGURA, alturaCartao));
 
         String titulo = resposta ? "Resposta de " + c.getAutor() : c.getAutor();
         cartao.add(rotulo(titulo, 18, true), BorderLayout.NORTH);
@@ -768,8 +776,14 @@ public class TelaDetalhesFilme extends JPanel {
 
         JButton curtir = botao("Curtir (" + c.getCurtidas() + ")", CORAL);
         curtir.addActionListener(e -> {
-            c.setCurtidas(c.getCurtidas() + 1);
-            comentarioDAO.curtir(c.getId());
+            if (!Sessao.adulta()) {
+                JOptionPane.showMessageDialog(this, "Complete sua data de nascimento (18+) antes de curtir.");
+                return;
+            }
+            if (!comentarioDAO.curtir(c.getId(), Sessao.getUsuario().getId())) {
+                JOptionPane.showMessageDialog(this, "Você já curtiu este comentário.");
+            }
+            carregarComentarios();
             atualizarComentarios();
         });
 

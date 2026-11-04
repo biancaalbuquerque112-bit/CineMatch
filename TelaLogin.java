@@ -284,6 +284,7 @@ public class TelaLogin extends JFrame {
         if (usuario != null) {
 
             // Abre a tela inicial com o nome do usuário autenticado no banco
+            Sessao.entrar(usuario);
             new TelaInicial(usuario.getNome());
 
             dispose();
@@ -307,7 +308,7 @@ public class TelaLogin extends JFrame {
                 JDialog.DISPOSE_ON_CLOSE
         );
 
-        janela.setSize(440, 485);
+        janela.setSize(470, 580);
         janela.setResizable(false);
         janela.setLocationRelativeTo(this);
 
@@ -337,10 +338,12 @@ public class TelaLogin extends JFrame {
         JTextField nome = new JTextField();
         JTextField email = new JTextField();
         JPasswordField senha = new JPasswordField();
+        JTextField nascimento = new JTextField();
 
         configurarCampo(nome);
         configurarCampo(email);
         configurarCampo(senha);
+        configurarCampo(nascimento);
 
         JButton confirmar = criarBotao("Criar conta", CORAL);
         JButton cancelar = criarBotao("Cancelar", ROXO_BOTAO);
@@ -363,6 +366,12 @@ public class TelaLogin extends JFrame {
         painel.add(criarLabel("Senha"));
         painel.add(Box.createVerticalStrut(5));
         painel.add(senha);
+        painel.add(Box.createVerticalStrut(13));
+
+        painel.add(criarLabel("Data de nascimento (DD/MM/AAAA)"));
+        painel.add(Box.createVerticalStrut(5));
+        nascimento.setToolTipText("Obrigatória para cadastro de maiores de 18 anos");
+        painel.add(nascimento);
         painel.add(Box.createVerticalStrut(22));
 
         painel.add(confirmar);
@@ -386,8 +395,31 @@ public class TelaLogin extends JFrame {
                 return;
             }
 
-            // Cria o objeto modelo Usuario
+            java.time.LocalDate dataNascimento;
+            try {
+                java.time.format.DateTimeFormatter formato =
+                    java.time.format.DateTimeFormatter.ofPattern("dd/MM/uuuu")
+                        .withResolverStyle(java.time.format.ResolverStyle.STRICT);
+                dataNascimento = java.time.LocalDate.parse(nascimento.getText().trim(), formato);
+            } catch (java.time.DateTimeException ex) {
+                JOptionPane.showMessageDialog(janela, "Digite uma data válida: DD/MM/AAAA.");
+                return;
+            }
+            if (dataNascimento.isAfter(java.time.LocalDate.now().minusYears(18))) {
+                JOptionPane.showMessageDialog(janela, "Cadastro exclusivo para maiores de 18 anos.");
+                return;
+            }
+            if (dataNascimento.isBefore(java.time.LocalDate.now().minusYears(110))) {
+                JOptionPane.showMessageDialog(janela, "Confira o ano de nascimento informado.");
+                return;
+            }
+            if (!emailStr.contains("@") || senhaDigitada.length() < 6) {
+                JOptionPane.showMessageDialog(janela, "Use um e-mail válido e senha com pelo menos 6 caracteres.");
+                return;
+            }
+            // Cria a conta já vinculada à data de nascimento e salva no H2.
             Usuario novoUsuario = new Usuario(nomeStr, emailStr, senhaDigitada);
+            novoUsuario.setNascimento(dataNascimento);
 
             // Persiste no banco de dados H2 via UsuarioDAO
             boolean sucesso = usuarioDAO.cadastrar(novoUsuario);

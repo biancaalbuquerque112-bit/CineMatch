@@ -273,8 +273,29 @@ public class TelaCatalogo extends JFrame {
 
         for (int i = 0; i < 5; i++) {
             final int quantidade = i + 1;
-            JButton estrela = new JButton();
-            estrela.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 27));
+            JButton estrela = new JButton() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                    Polygon p = new Polygon();
+                    for (int j = 0; j < 10; j++) {
+                        double angulo = Math.PI * j / 5 - Math.PI / 2;
+                        int raio = j % 2 == 0 ? 13 : 6;
+                        p.addPoint(getWidth() / 2 + (int)Math.round(raio * Math.cos(angulo)),
+                                   getHeight() / 2 + (int)Math.round(raio * Math.sin(angulo)));
+                    }
+                    g2.setColor(DOURADO);
+                    if (Boolean.TRUE.equals(getClientProperty("preenchida")))
+                        g2.fillPolygon(p);
+                    else {
+                        g2.setStroke(new BasicStroke(2f));
+                        g2.drawPolygon(p);
+                    }
+                    g2.dispose();
+                }
+            };
             estrela.setForeground(DOURADO);
             estrela.setContentAreaFilled(false);
             estrela.setBorderPainted(false);
@@ -318,10 +339,11 @@ public class TelaCatalogo extends JFrame {
         for (int i = 0; i < estrelas.length; i++) {
             if (estrelas[i] == null) continue;
             if (i < quantidade) {
-                estrelas[i].setText("\u2605"); // Estrela preenchida
+                estrelas[i].putClientProperty("preenchida", true);
             } else {
-                estrelas[i].setText("\u2606"); // Estrela vazia
+                estrelas[i].putClientProperty("preenchida", false);
             }
+            estrelas[i].repaint();
         }
     }
 
@@ -392,9 +414,17 @@ public class TelaCatalogo extends JFrame {
 
         // Ação de curtir (Persiste no banco H2)
         gostar.addActionListener(e -> {
-            filme.curtir();
-            filmeDAO.atualizarAvaliacao(filme);
-            curtidas.setText("Curtidas: " + filme.getCurtidas());
+            if (!Sessao.adulta()) {
+                JOptionPane.showMessageDialog(this, "Complete seu perfil com a data de nascimento (18+) antes de curtir.");
+                return;
+            }
+            if(new PreferenciaFilmeDAO().marcarCurtido(Sessao.getUsuario().getId(),filme.getId())){
+                int total = new PreferenciaFilmeDAO().contarCurtidas(filme.getId());
+                filme.setCurtidas(total);
+                curtidas.setText("Curtidas: " + total);
+            } else {
+                JOptionPane.showMessageDialog(this, "Não foi possível registrar a curtida.");
+            }
         });
 
         // Ação de rejeitar
