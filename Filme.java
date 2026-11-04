@@ -1,6 +1,6 @@
-
 public class Filme implements Comparable<Filme> {
 
+    private int id;
     private String titulo;
     private String genero;
     private int ano;
@@ -11,29 +11,40 @@ public class Filme implements Comparable<Filme> {
     private int rejeicoes;
     private int nota;
 
-    // Construtor com o nome do diretor
-    public Filme(String titulo, String genero, int ano,
-                 String capa, String diretor) {
-
+    // Construtor completo com ID
+    public Filme(int id, String titulo, String genero, int ano, String capa, String diretor) {
+        this.id = id;
         this.titulo = titulo;
         this.genero = genero;
         this.ano = ano;
         this.capa = capa;
         this.diretor = diretor;
-
         this.curtidas = 0;
         this.rejeicoes = 0;
         this.nota = 0;
     }
 
-    // Mantém compatibilidade com o construtor antigo
-    public Filme(String titulo, String genero,
-                 int ano, String capa) {
+    // Construtor com o nome do diretor (mantido)
+    public Filme(String titulo, String genero, int ano, String capa, String diretor) {
+        this(0, titulo, genero, ano, capa, diretor);
+    }
 
+    // Mantém compatibilidade com o construtor antigo
+    public Filme(String titulo, String genero, int ano, String capa) {
         this(titulo, genero, ano, capa, "Não informado");
     }
 
-    // Getters
+    public Filme() {}
+
+    // Getters e Setters para o banco de dados
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
     public String getTitulo() {
         return titulo;
     }
@@ -58,12 +69,24 @@ public class Filme implements Comparable<Filme> {
         return curtidas;
     }
 
+    public void setCurtidas(int curtidas) {
+        this.curtidas = curtidas;
+    }
+
     public int getRejeicoes() {
         return rejeicoes;
     }
 
+    public void setRejeicoes(int rejeicoes) {
+        this.rejeicoes = rejeicoes;
+    }
+
     public int getNota() {
         return nota;
+    }
+
+    public void setNota(int nota) {
+        this.nota = nota;
     }
 
     // Curtidas
@@ -78,7 +101,6 @@ public class Filme implements Comparable<Filme> {
 
     // Avaliação de 1 a 5 estrelas
     public void avaliar(int nota) {
-
         if (nota >= 1 && nota <= 5) {
             this.nota = nota;
         }
@@ -86,16 +108,13 @@ public class Filme implements Comparable<Filme> {
 
     @Override
     public String toString() {
-
-        return titulo + " (" + ano + ")"
-                + " - Gênero: " + genero
+        return titulo + " (" + ano + ") | Gênero: " + genero
                 + " | Direção: " + diretor
                 + " | Nota: " + nota;
     }
 
     @Override
     public boolean equals(Object obj) {
-
         if (this == obj) {
             return true;
         }
@@ -112,7 +131,6 @@ public class Filme implements Comparable<Filme> {
 
     @Override
     public int hashCode() {
-
         return java.util.Objects.hash(
                 titulo.toLowerCase(), ano
         );
@@ -120,7 +138,6 @@ public class Filme implements Comparable<Filme> {
 
     @Override
     public int compareTo(Filme outroFilme) {
-
         return this.titulo.compareToIgnoreCase(
                 outroFilme.getTitulo()
         );

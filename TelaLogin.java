@@ -1,4 +1,3 @@
-
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -34,8 +33,12 @@ public class TelaLogin extends JFrame {
 
     private JTextField campoEmail;
     private JPasswordField campoSenha;
+    private UsuarioDAO usuarioDAO;
 
     public TelaLogin() {
+
+        // Instancia a camada de persistência com o Banco H2
+        this.usuarioDAO = new UsuarioDAO();
 
         setTitle("CineMatch - Login");
         setSize(500, 600);
@@ -257,7 +260,7 @@ public class TelaLogin extends JFrame {
         }
     }
 
-    // Autenticação do usuário
+    // Autenticação do usuário consultando o banco H2 via UsuarioDAO
     private void fazerLogin() {
 
         String email = campoEmail.getText().trim();
@@ -267,14 +270,20 @@ public class TelaLogin extends JFrame {
 
         java.util.Arrays.fill(caracteres, '\0');
 
-        Usuario usuario = GerenciadorUsuarios.autenticar(
-                email, senha
-        );
+        if (email.isEmpty() || senha.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Por favor, preencha o e-mail e a senha."
+            );
+            return;
+        }
+
+        // Consulta o banco H2
+        Usuario usuario = usuarioDAO.autenticar(email, senha);
 
         if (usuario != null) {
 
-            // Envia o nome para a tela inicial.
-            // Não abre mais a mensagem antiga.
+            // Abre a tela inicial com o nome do usuário autenticado no banco
             new TelaInicial(usuario.getNome());
 
             dispose();
@@ -287,7 +296,7 @@ public class TelaLogin extends JFrame {
         }
     }
 
-    // Tela personalizada para criar conta
+    // Tela personalizada para criar conta e salvar no banco H2
     private void criarConta() {
 
         JDialog janela = new JDialog(
@@ -362,31 +371,41 @@ public class TelaLogin extends JFrame {
 
         confirmar.addActionListener(e -> {
 
+            String nomeStr = nome.getText().trim();
+            String emailStr = email.getText().trim();
+
             char[] caracteres = senha.getPassword();
             String senhaDigitada = new String(caracteres);
-
             java.util.Arrays.fill(caracteres, '\0');
 
-            boolean sucesso = GerenciadorUsuarios.cadastrar(
-                    nome.getText().trim(),
-                    email.getText().trim(),
-                    senhaDigitada
-            );
+            if (nomeStr.isEmpty() || emailStr.isEmpty() || senhaDigitada.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        janela,
+                        "Preencha todos os campos!"
+                );
+                return;
+            }
+
+            // Cria o objeto modelo Usuario
+            Usuario novoUsuario = new Usuario(nomeStr, emailStr, senhaDigitada);
+
+            // Persiste no banco de dados H2 via UsuarioDAO
+            boolean sucesso = usuarioDAO.cadastrar(novoUsuario);
 
             if (sucesso) {
                 JOptionPane.showMessageDialog(
                         janela,
-                        "Conta criada com sucesso!"
+                        "Conta criada com sucesso no banco de dados!"
                 );
 
-                campoEmail.setText(email.getText().trim());
+                campoEmail.setText(emailStr);
                 campoSenha.setText("");
                 janela.dispose();
 
             } else {
                 JOptionPane.showMessageDialog(
                         janela,
-                        "Preencha os campos ou utilize outro e-mail."
+                        "Erro ao cadastrar. Verifique se o e-mail já está em uso."
                 );
             }
         });

@@ -1,6 +1,6 @@
-
 import java.awt.*;
 import java.io.File;
+import java.util.List;
 import javax.swing.*;
 
 public class TelaPessoas extends JFrame {
@@ -8,11 +8,12 @@ public class TelaPessoas extends JFrame {
     private final Color FUNDO = new Color(18, 18, 30);
     private final Color ROSA = new Color(255, 75, 100);
 
-    private TelaDescobrir telaAnterior;
+    private final TelaDescobrir telaAnterior;
+    private final UsuarioDAO usuarioDAO;
 
     public TelaPessoas(Filme filme, TelaDescobrir anterior) {
-
         this.telaAnterior = anterior;
+        this.usuarioDAO = new UsuarioDAO();
 
         setTitle("CineMatch - Pessoas");
         setSize(850, 650);
@@ -21,13 +22,9 @@ public class TelaPessoas extends JFrame {
 
         JPanel principal = new JPanel(new BorderLayout(20, 20));
         principal.setBackground(FUNDO);
-        principal.setBorder(
-            BorderFactory.createEmptyBorder(25, 25, 25, 25)
-        );
+        principal.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
 
-        JLabel titulo = new JLabel(
-            "Pessoas que também curtiram " + filme.getTitulo()
-        );
+        JLabel titulo = new JLabel("Pessoas que também curtiram " + filme.getTitulo());
         titulo.setFont(new Font("Arial", Font.BOLD, 24));
         titulo.setForeground(ROSA);
 
@@ -40,18 +37,14 @@ public class TelaPessoas extends JFrame {
         capa.setHorizontalAlignment(SwingConstants.CENTER);
 
         File arquivo = new File("src/" + filme.getCapa());
+        if (!arquivo.exists()) {
+            arquivo = new File(filme.getCapa());
+        }
 
         if (arquivo.exists()) {
-            ImageIcon original = new ImageIcon(
-                arquivo.getAbsolutePath()
-            );
-
+            ImageIcon original = new ImageIcon(arquivo.getAbsolutePath());
             if (original.getIconWidth() > 0) {
-                Image imagem = original.getImage()
-                    .getScaledInstance(
-                        210, 300, Image.SCALE_SMOOTH
-                    );
-
+                Image imagem = original.getImage().getScaledInstance(210, 300, Image.SCALE_SMOOTH);
                 capa.setIcon(new ImageIcon(imagem));
             }
         }
@@ -65,25 +58,24 @@ public class TelaPessoas extends JFrame {
 
         JPanel listaPessoas = new JPanel();
         listaPessoas.setBackground(FUNDO);
-        listaPessoas.setLayout(
-            new BoxLayout(listaPessoas, BoxLayout.Y_AXIS)
-        );
+        listaPessoas.setLayout(new BoxLayout(listaPessoas, BoxLayout.Y_AXIS));
 
-        listaPessoas.add(criarPessoa(
-            "Marina, 25", "Amizades e relacionamento"
-        ));
+        // Busca os usuários cadastrados na tabela 'usuario' do banco H2
+        List<Usuario> usuariosBanco = usuarioDAO.listarTodos();
 
-        listaPessoas.add(criarPessoa(
-            "Lucas, 27", "Amizades"
-        ));
-
-        listaPessoas.add(criarPessoa(
-            "Camila, 24", "Relacionamento"
-        ));
-
-        listaPessoas.add(criarPessoa(
-            "Rafael, 26", "Amizades e relacionamento"
-        ));
+        if (usuariosBanco != null && !usuariosBanco.isEmpty()) {
+            for (Usuario u : usuariosBanco) {
+                String nomeExibicao = u.getNome() != null ? u.getNome() : "Usuário CineMatch";
+                String intencaoExibicao = u.getIntencao() != null ? u.getIntencao() : "Amizades e relacionamento";
+                listaPessoas.add(criarPessoa(nomeExibicao, intencaoExibicao));
+            }
+        } else {
+            // Fallback de demonstração caso o banco não possua outros registros
+            listaPessoas.add(criarPessoa("Marina, 25", "Amizades e relacionamento"));
+            listaPessoas.add(criarPessoa("Lucas, 27", "Amizades"));
+            listaPessoas.add(criarPessoa("Camila, 24", "Relacionamento"));
+            listaPessoas.add(criarPessoa("Rafael, 26", "Amizades e relacionamento"));
+        }
 
         JScrollPane rolagem = new JScrollPane(listaPessoas);
         rolagem.setBorder(null);
@@ -91,12 +83,11 @@ public class TelaPessoas extends JFrame {
         conteudo.add(rolagem, BorderLayout.CENTER);
         principal.add(conteudo, BorderLayout.CENTER);
 
-        JButton continuar = new JButton(
-            "Continuar descobrindo filmes"
-        );
+        JButton continuar = new JButton("Continuar descobrindo filmes");
         continuar.setBackground(ROSA);
         continuar.setForeground(Color.WHITE);
         continuar.setFont(new Font("Arial", Font.BOLD, 15));
+        continuar.setFocusPainted(false);
 
         continuar.addActionListener(e -> voltar());
 
@@ -106,43 +97,35 @@ public class TelaPessoas extends JFrame {
 
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
-            public void windowClosed(
-                    java.awt.event.WindowEvent e) {
-                telaAnterior.voltarParaFilmes();
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                if (telaAnterior != null) {
+                    telaAnterior.mostrarDescoberta();
+                }
             }
         });
 
         setVisible(true);
     }
 
-    private JPanel criarPessoa(
-            String nome, String interesse) {
-
+    private JPanel criarPessoa(String nome, String interesse) {
         JPanel painel = new JPanel(new BorderLayout(10, 5));
         painel.setBackground(new Color(35, 35, 50));
-        painel.setBorder(
-            BorderFactory.createEmptyBorder(15, 15, 15, 15)
-        );
-        painel.setMaximumSize(
-            new Dimension(Integer.MAX_VALUE, 100)
-        );
+        painel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        painel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
 
-        JLabel dados = new JLabel(
-            "<html><b>" + nome + "</b><br>"
-            + interesse + "</html>"
-        );
+        JLabel dados = new JLabel("<html><b>" + nome + "</b><br>" + interesse + "</html>");
         dados.setForeground(Color.WHITE);
         dados.setFont(new Font("Arial", Font.PLAIN, 14));
 
         JButton conectar = new JButton("Conectar");
         conectar.setBackground(ROSA);
         conectar.setForeground(Color.WHITE);
+        conectar.setFocusPainted(false);
 
         conectar.addActionListener(e -> {
             JOptionPane.showMessageDialog(
-                this,
-                "Solicitação de conexão com "
-                + nome + " (simulação)."
+                    this,
+                    "Solicitação de conexão enviada para " + nome + "!"
             );
         });
 
@@ -151,9 +134,7 @@ public class TelaPessoas extends JFrame {
 
         JPanel espaco = new JPanel(new BorderLayout());
         espaco.setBackground(FUNDO);
-        espaco.setBorder(
-            BorderFactory.createEmptyBorder(0, 0, 10, 0)
-        );
+        espaco.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
         espaco.add(painel);
 
         return espaco;
