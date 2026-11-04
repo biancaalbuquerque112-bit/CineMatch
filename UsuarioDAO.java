@@ -2,6 +2,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UsuarioDAO {
 
@@ -44,9 +46,19 @@ public class UsuarioDAO {
                     u.setNome(rs.getString("nome"));
                     u.setEmail(rs.getString("email"));
                     u.setSenha(rs.getString("senha"));
-                    u.setIdade(rs.getInt("idade"));
-                    u.setBio(rs.getString("bio"));
-                    u.setIntencao(rs.getString("intencao"));
+                    
+                    try {
+                        u.setIdade(rs.getInt("idade"));
+                    } catch (SQLException ignored) {}
+                    
+                    try {
+                        u.setBio(rs.getString("bio"));
+                    } catch (SQLException ignored) {}
+                    
+                    try {
+                        u.setIntencao(rs.getString("intencao"));
+                    } catch (SQLException ignored) {}
+                    
                     return u;
                 }
             }
@@ -75,5 +87,41 @@ public class UsuarioDAO {
             System.err.println("Erro ao atualizar perfil do usuário: " + e.getMessage());
             return false;
         }
+    }
+
+    // Lista todos os usuários cadastrados no banco H2 (usado pela TelaPessoas)
+    public List<Usuario> listarTodos() {
+        List<Usuario> lista = new ArrayList<>();
+        String sql = "SELECT * FROM usuario";
+
+        try (Connection conn = ConexaoBanco.getConexao();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                Usuario u = new Usuario();
+                u.setNome(rs.getString("nome"));
+                u.setEmail(rs.getString("email"));
+                u.setSenha(rs.getString("senha"));
+
+                try {
+                    u.setIdade(rs.getInt("idade"));
+                } catch (SQLException ignored) {}
+
+                try {
+                    u.setBio(rs.getString("bio"));
+                } catch (SQLException ignored) {}
+
+                try {
+                    u.setIntencao(rs.getString("intencao"));
+                } catch (SQLException ignored) {}
+
+                lista.add(u);
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao listar usuários: " + e.getMessage());
+        }
+
+        return lista;
     }
 }
