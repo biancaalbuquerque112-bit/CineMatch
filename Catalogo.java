@@ -27,7 +27,7 @@ public class Catalogo {
                 "Matrix",
                 "Ficção Científica",
                 1999,
-                "imagens/matrix.jpg",
+                "imagens/Matrix.jpg",
                 "Lana Wachowski e Lilly Wachowski"
         ));
 

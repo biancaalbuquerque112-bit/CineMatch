@@ -21,7 +21,7 @@ public class TelaMeuPerfil extends JFrame {
     private final Color TEXTO = new Color(247, 243, 250);
     private final Color SUAVE = new Color(220, 204, 232);
 
-    private final File ARQUIVO = new File("perfil_cinematch.properties");
+    // Cada perfil é salvo separadamente no H2; não usamos o antigo arquivo compartilhado.
 
     private Usuario usuarioLogado;
     private UsuarioDAO usuarioDAO;
@@ -60,7 +60,7 @@ public class TelaMeuPerfil extends JFrame {
 
     // Construtor principal recebendo o utilizador logado
     public TelaMeuPerfil(Usuario usuarioLogado) {
-        this.usuarioLogado = usuarioLogado;
+        this.usuarioLogado = usuarioLogado != null ? usuarioLogado : Sessao.getUsuario();
         this.usuarioDAO = new UsuarioDAO();
 
         setTitle("CineMatch - Meu Perfil");
@@ -85,6 +85,8 @@ public class TelaMeuPerfil extends JFrame {
         coluna.add(criarAreaFoto());
         coluna.add(Box.createVerticalStrut(26));
         coluna.add(criarFormulario());
+        coluna.add(Box.createVerticalStrut(22));
+        coluna.add(criarFilmesPessoais());
 
         JPanel conteudo = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         conteudo.setBackground(FUNDO);
@@ -565,8 +567,64 @@ public class TelaMeuPerfil extends JFrame {
         return true;
     }
 
-    // SALVAR PERFIL NO H2 E NO ARQUIVO PROPERTIES
+
+    // FILMES PESSOAIS SALVOS NO BANCO
+    private JPanel criarFilmesPessoais() {
+        JPanel painel = new JPanel();
+        painel.setLayout(new BoxLayout(painel, BoxLayout.Y_AXIS));
+        painel.setOpaque(false);
+        painel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel titulo = criarLabel("Minha coleção de filmes", 21, CORAL, true);
+        titulo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        painel.add(titulo);
+        painel.add(Box.createVerticalStrut(12));
+
+        if (usuarioLogado == null || usuarioLogado.getId() <= 0) {
+            painel.add(criarLabel("Entre na sua conta para ver os filmes.", 16, SUAVE, false));
+            return painel;
+        }
+
+        PreferenciaFilmeDAO dao = new PreferenciaFilmeDAO();
+        java.util.List<Filme> curtidos = dao.listarCurtidos(usuarioLogado.getId());
+        java.util.List<Filme> salvos = dao.listarSalvos(usuarioLogado.getId());
+
+        painel.add(criarLabel("Filmes curtidos (" + curtidos.size() + ")", 17, TEXTO, true));
+        painel.add(Box.createVerticalStrut(5));
+        painel.add(resumoFilmes(curtidos, "Você ainda não curtiu filmes."));
+        painel.add(Box.createVerticalStrut(13));
+        painel.add(criarLabel("Filmes salvos (" + salvos.size() + ")", 17, TEXTO, true));
+        painel.add(Box.createVerticalStrut(5));
+        painel.add(resumoFilmes(salvos, "Você ainda não salvou filmes."));
+        return painel;
+    }
+
+    private JTextArea resumoFilmes(java.util.List<Filme> filmes, String vazio) {
+        StringBuilder texto = new StringBuilder();
+        for (Filme filme : filmes) {
+            if (texto.length() > 0) texto.append("\n");
+            texto.append("• ").append(filme.getTitulo());
+        }
+        JTextArea area = new JTextArea(texto.length() == 0 ? vazio : texto.toString());
+        area.setFont(new Font("Times New Roman", Font.PLAIN, 16));
+        area.setBackground(CARD);
+        area.setForeground(SUAVE);
+        area.setWrapStyleWord(true);
+        area.setLineWrap(true);
+        area.setEditable(false);
+        area.setFocusable(false);
+        area.setAlignmentX(Component.LEFT_ALIGNMENT);
+        area.setRows(Math.max(2, filmes.size() + 1));
+        area.setMaximumSize(new Dimension(Integer.MAX_VALUE, area.getPreferredSize().height));
+        return area;
+    }
+
+    // SALVAMENTO POR CONTA: H2
     private void salvarPerfil() {
+        if (usuarioLogado == null || usuarioLogado.getId() <= 0) {
+            JOptionPane.showMessageDialog(this, "Entre na sua conta para salvar o perfil.");
+            return;
+        }
         String nome = campoNome.getText().trim();
         if (nome.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Por favor, informe seu nome.");
@@ -574,32 +632,23 @@ public class TelaMeuPerfil extends JFrame {
         }
 
         LocalDate nascimento = obterNascimento();
-        if (nascimento == null || !validarIdade(nascimento)) {
+        if (nascimento == null || !validarIdade(nascimento)) return;
+
+        // Usamos o ID da sessão: nunca escrevemos os dados em outra conta.
+        Usuario atualizado = usuarioDAO.buscarPorId(usuarioLogado.getId());
+        if (atualizado == null) {
+            JOptionPane.showMessageDialog(this, "Não foi possível encontrar sua conta.");
             return;
         }
-
-        String bio = campoBio.getText().trim();
-        String intencao = (String) campoIntencao.getSelectedItem();
-
-        // 1. Atualiza no banco de dados H2 via UsuarioDAO
-        if (usuarioLogado != null && usuarioLogado.getEmail() != null) {
-            usuarioDAO.atualizarPerfil(usuarioLogado.getEmail(), bio, intencao);
-            usuarioLogado.setNome(nome);
-            usuarioLogado.setBio(bio);
-            usuarioLogado.setIntencao(intencao);
-        }
-
-        // 2. Mantém o salvamento no ficheiro de propriedades local
-        Properties dados = new Properties();
-        dados.setProperty("nome", nome);
-        dados.setProperty("dataNascimento", nascimento.toString());
-        dados.setProperty("bio", bio);
-        dados.setProperty("intencao", intencao);
-        dados.setProperty("identidadeGenero", (String) campoGenero.getSelectedItem());
-        dados.setProperty("orientacaoSexual", (String) campoOrientacao.getSelectedItem());
-        dados.setProperty("interesseConhecer", (String) campoInteresse.getSelectedItem());
-        dados.setProperty("mostrarInformacoes", String.valueOf(mostrarInformacoes.isSelected()));
-        dados.setProperty("permitirSugestoes", String.valueOf(permitirSugestoes.isSelected()));
+        atualizado.setNome(nome);
+        atualizado.setNascimento(nascimento);
+        atualizado.setBio(campoBio.getText().trim());
+        atualizado.setIntencao((String) campoIntencao.getSelectedItem());
+        atualizado.setIdentidadeGenero((String) campoGenero.getSelectedItem());
+        atualizado.setOrientacao((String) campoOrientacao.getSelectedItem());
+        atualizado.setInteresse((String) campoInteresse.getSelectedItem());
+        atualizado.setMostrarInformacoes(mostrarInformacoes.isSelected());
+        atualizado.setPermitirSugestoes(permitirSugestoes.isSelected());
 
         StringBuilder favoritos = new StringBuilder();
         for (int i = 0; i < estrelasGeneros.size(); i++) {
@@ -608,86 +657,74 @@ public class TelaMeuPerfil extends JFrame {
                 favoritos.append(nomesGeneros.get(i));
             }
         }
-        dados.setProperty("generosFavoritos", favoritos.toString());
-        dados.setProperty("foto", arquivoFoto == null ? "" : arquivoFoto.getAbsolutePath());
+        atualizado.setGenerosFavoritos(favoritos.toString());
 
-        try (Writer escritor = new OutputStreamWriter(new FileOutputStream(ARQUIVO), StandardCharsets.UTF_8)) {
-            dados.store(escritor, "Perfil do CineMatch");
-            JOptionPane.showMessageDialog(this, "Perfil salvo com sucesso no banco de dados!");
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, "Não foi possível salvar o arquivo de perfil.");
+        if (arquivoFoto != null && arquivoFoto.isFile()) {
+            try {
+                File pasta = new File("imagens/perfis");
+                pasta.mkdirs();
+                String nomeArquivo = arquivoFoto.getName().toLowerCase();
+                String extensao = nomeArquivo.endsWith(".png") ? ".png" :
+                    nomeArquivo.endsWith(".jpeg") ? ".jpeg" : ".jpg";
+                File destino = new File(pasta, "usuario_" + atualizado.getId() + extensao);
+                java.nio.file.Files.copy(arquivoFoto.toPath(), destino.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                atualizado.setFoto(destino.getPath().replace('\\','/'));
+                arquivoFoto = destino;
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Não foi possível copiar a foto. Tente outra imagem.");
+                return;
+            }
+        }
+
+        if (usuarioDAO.atualizarPerfil(atualizado)) {
+            usuarioLogado = atualizado;
+            Sessao.entrar(atualizado);
+            JOptionPane.showMessageDialog(this, "Seu perfil foi salvo no banco de dados!");
+        } else {
+            JOptionPane.showMessageDialog(this, "Não foi possível salvar o perfil no H2.");
         }
     }
 
-    // CARREGAR PERFIL
+    // CARREGAMENTO POR CONTA: H2. NÃO COMPARTILHA PROPRIEDADES ENTRE USUÁRIOS.
     private void carregarPerfil() {
-        if (usuarioLogado != null) {
-            campoNome.setText(usuarioLogado.getNome() != null ? usuarioLogado.getNome() : "");
-            campoBio.setText(usuarioLogado.getBio() != null ? usuarioLogado.getBio() : "");
-            if (usuarioLogado.getIntencao() != null) {
-                campoIntencao.setSelectedItem(usuarioLogado.getIntencao());
-            }
+        if (usuarioLogado == null || usuarioLogado.getId() <= 0) return;
+        Usuario dados = usuarioDAO.buscarPorId(usuarioLogado.getId());
+        if (dados == null) return;
+        usuarioLogado = dados;
+        Sessao.entrar(dados);
+
+        campoNome.setText(dados.getNome() == null ? "" : dados.getNome());
+        campoBio.setText(dados.getBio() == null ? "" : dados.getBio());
+        if (dados.getNascimento() != null) {
+            LocalDate n = dados.getNascimento();
+            campoDia.setSelectedItem(String.valueOf(n.getDayOfMonth()));
+            campoMes.setSelectedIndex(n.getMonthValue());
+            campoAno.setSelectedItem(String.valueOf(n.getYear()));
         }
+        if (dados.getIntencao() != null) campoIntencao.setSelectedItem(dados.getIntencao());
+        campoGenero.setSelectedItem(dados.getIdentidadeGenero());
+        campoOrientacao.setSelectedItem(dados.getOrientacao());
+        campoInteresse.setSelectedItem(dados.getInteresse());
+        mostrarInformacoes.setSelected(dados.isMostrarInformacoes());
+        permitirSugestoes.setSelected(dados.isPermitirSugestoes());
 
-        if (!ARQUIVO.isFile()) {
-            return;
+        String[] favoritos = (dados.getGenerosFavoritos() == null ? "" :
+            dados.getGenerosFavoritos()).split("\\|");
+        for (int i = 0; i < nomesGeneros.size(); i++) {
+            boolean marcado = false;
+            for (String favorito : favoritos) {
+                if (nomesGeneros.get(i).equals(favorito)) {
+                    marcado = true;
+                    break;
+                }
+            }
+            estrelasGeneros.get(i).setSelected(marcado);
+            estrelasGeneros.get(i).repaint();
         }
-
-        Properties dados = new Properties();
-        try (Reader leitor = new InputStreamReader(new FileInputStream(ARQUIVO), StandardCharsets.UTF_8)) {
-            dados.load(leitor);
-
-            if (campoNome.getText().isEmpty()) {
-                campoNome.setText(dados.getProperty("nome", ""));
-            }
-            if (campoBio.getText().isEmpty()) {
-                campoBio.setText(dados.getProperty("bio", ""));
-            }
-
-            String dataSalva = dados.getProperty("dataNascimento", "");
-            if (!dataSalva.isEmpty()) {
-                try {
-                    LocalDate nascimento = LocalDate.parse(dataSalva);
-                    campoDia.setSelectedItem(String.valueOf(nascimento.getDayOfMonth()));
-                    campoMes.setSelectedIndex(nascimento.getMonthValue());
-                    campoAno.setSelectedItem(String.valueOf(nascimento.getYear()));
-                } catch (DateTimeException e) {
-                    // Mantém os campos sem seleção se a data for inválida
-                }
-            }
-
-            campoIntencao.setSelectedItem(dados.getProperty("intencao", "Amizades"));
-            campoGenero.setSelectedItem(dados.getProperty("identidadeGenero", "Prefiro não informar"));
-            campoOrientacao.setSelectedItem(dados.getProperty("orientacaoSexual", "Prefiro não informar"));
-            campoInteresse.setSelectedItem(dados.getProperty("interesseConhecer", "Sem preferência"));
-            mostrarInformacoes.setSelected(Boolean.parseBoolean(dados.getProperty("mostrarInformacoes", "false")));
-            permitirSugestoes.setSelected(Boolean.parseBoolean(dados.getProperty("permitirSugestoes", "true")));
-
-            String[] favoritos = dados.getProperty("generosFavoritos", "").split("\\|");
-            for (int i = 0; i < nomesGeneros.size(); i++) {
-                String nomeGenero = nomesGeneros.get(i);
-                JToggleButton estrela = estrelasGeneros.get(i);
-                boolean favorito = false;
-                for (String generoSalvo : favoritos) {
-                    if (nomeGenero.equals(generoSalvo)) {
-                        favorito = true;
-                        break;
-                    }
-                }
-                estrela.setSelected(favorito);
-                estrela.repaint();
-            }
-
-            String caminhoFoto = dados.getProperty("foto", "");
-            if (!caminhoFoto.isEmpty()) {
-                File foto = new File(caminhoFoto);
-                if (exibirFoto(foto)) {
-                    arquivoFoto = foto;
-                }
-            }
-
-        } catch (IOException e) {
-            System.err.println("Erro ao carregar ficheiro local de perfil: " + e.getMessage());
+        if (dados.getFoto() != null && !dados.getFoto().isEmpty()) {
+            File foto = new File(dados.getFoto());
+            if (exibirFoto(foto)) arquivoFoto = foto;
         }
     }
 }

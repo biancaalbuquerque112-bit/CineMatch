@@ -1,134 +1,93 @@
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Usa o Catalogo.java como fonte dos 50 títulos e o H2 como armazenamento. */
 public class FilmeDAO {
-
-    // Salva um novo filme no banco de dados
-    public boolean salvar(Filme filme) {
-        String sql = "INSERT INTO filme (titulo, genero, ano, capa, curtidas, nota) VALUES (?, ?, ?, ?, ?, ?)";
-
-        try (Connection conn = ConexaoBanco.getConexao();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, filme.getTitulo());
-            stmt.setString(2, filme.getGenero());
-            stmt.setInt(3, filme.getAno());
-            stmt.setString(4, filme.getCapa());
-            stmt.setInt(5, filme.getCurtidas());
-            stmt.setInt(6, filme.getNota());
-
-            stmt.executeUpdate();
-            return true;
-
-        } catch (SQLException e) {
-            System.err.println("Erro ao salvar filme: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // Retorna todos os filmes cadastrados no banco H2
-    public List<Filme> listarTodos() {
-        List<Filme> filmes = new ArrayList<>();
-        String sql = "SELECT * FROM filme ORDER BY titulo ASC";
-
-        try (Connection conn = ConexaoBanco.getConexao();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                Filme f = new Filme(
-                    rs.getString("titulo"),
-                    rs.getString("genero"),
-                    rs.getInt("ano"),
-                    rs.getString("capa")
-                );
-                f.setCurtidas(rs.getInt("curtidas"));
-                f.setNota(rs.getInt("nota"));
-                filmes.add(f);
-            }
-
-        } catch (SQLException e) {
-            System.err.println("Erro ao listar filmes: " + e.getMessage());
-        }
-
-        return filmes;
-    }
-
-    // Busca filmes por gênero
-    public List<Filme> buscarPorGenero(String genero) {
-        List<Filme> filmes = new ArrayList<>();
-        String sql = "SELECT * FROM filme WHERE LOWER(genero) LIKE LOWER(?) ORDER BY titulo ASC";
-
-        try (Connection conn = ConexaoBanco.getConexao();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, "%" + genero + "%");
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    Filme f = new Filme(
-                        rs.getString("titulo"),
-                        rs.getString("genero"),
-                        rs.getInt("ano"),
-                        rs.getString("capa")
-                    );
-                    f.setCurtidas(rs.getInt("curtidas"));
-                    f.setNota(rs.getInt("nota"));
-                    filmes.add(f);
+    public void sincronizarCatalogo() {
+        List<Filme> oficiais=new Catalogo().getFilmes();
+        String busca="SELECT id FROM filme WHERE LOWER(titulo)=LOWER(?) ORDER BY id";
+        String insere="INSERT INTO filme(titulo,genero,ano,capa,diretor,curtidas,nota) VALUES(?,?,?,?,?,0,0)";
+        String atualiza="UPDATE filme SET genero=?,ano=?,capa=?,diretor=? WHERE id=?";
+        try(Connection c=ConexaoBanco.getConexao();
+            PreparedStatement b=c.prepareStatement(busca);
+            PreparedStatement i=c.prepareStatement(insere);
+            PreparedStatement u=c.prepareStatement(atualiza);
+            PreparedStatement ajustarComentarios=c.prepareStatement(
+                "UPDATE comentario SET filme_id=? WHERE LOWER(titulo_filme)=LOWER(?) AND (filme_id IS NULL OR filme_id=0)")){
+            for(Filme f:oficiais){
+                b.setString(1,f.getTitulo());
+                int id=0;
+                try(ResultSet r=b.executeQuery()){if(r.next())id=r.getInt(1);}
+                if(id==0) {
+                    i.setString(1,f.getTitulo());i.setString(2,f.getGenero());
+                    i.setInt(3,f.getAno());i.setString(4,f.getCapa());
+                    i.setString(5,f.getDiretor());i.executeUpdate();
+                    try(ResultSet r=b.executeQuery()){if(r.next())id=r.getInt(1);}
+                } else {
+                    u.setString(1,f.getGenero());u.setInt(2,f.getAno());
+                    u.setString(3,f.getCapa());u.setString(4,f.getDiretor());u.setInt(5,id);
+                    u.executeUpdate();
                 }
+                ajustarComentarios.setInt(1,id);
+                ajustarComentarios.setString(2,f.getTitulo());
+                ajustarComentarios.executeUpdate();
             }
-
-        } catch (SQLException e) {
-            System.err.println("Erro ao buscar filmes por gênero: " + e.getMessage());
-        }
-
-        return filmes;
+        }catch(SQLException e){throw new IllegalStateException("Catálogo não sincronizado: "+e.getMessage(),e);}
     }
-
-    // Atualiza curtidas e notas de um filme existente
-    public boolean atualizarAvaliacao(Filme filme) {
-        String sql = "UPDATE filme SET curtidas = ?, nota = ? WHERE titulo = ?";
-
-        try (Connection conn = ConexaoBanco.getConexao();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, filme.getCurtidas());
-            stmt.setInt(2, filme.getNota());
-            stmt.setString(3, filme.getTitulo());
-
-            return stmt.executeUpdate() > 0;
-
-        } catch (SQLException e) {
-            System.err.println("Erro ao atualizar avaliação do filme: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // Popula a tabela 'filme' caso esteja vazia na primeira execução
-    public void popularBancoSeVazio() {
-        String sqlContagem = "SELECT COUNT(*) FROM filme";
-
-        try (Connection conn = ConexaoBanco.getConexao();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sqlContagem)) {
-
-            if (rs.next() && rs.getInt(1) == 0) {
-                System.out.println("Populando o banco H2 com os filmes iniciais...");
-
-                salvar(new Filme("O Poderoso Chefão", "Drama / Crime", 1972, "imagens/poderoso_chefao.jpg"));
-                salvar(new Filme("Interestelar", "Ficção Científica", 2014, "imagens/interestelar.jpg"));
-                salvar(new Filme("La La Land", "Romance / Musical", 2016, "imagens/lalaland.jpg"));
-                salvar(new Filme("Batman: O Cavaleiro das Trevas", "Ação", 2008, "imagens/batman.jpg"));
-                salvar(new Filme("Pulp Fiction", "Crime / Drama", 1994, "imagens/pulp_fiction.jpg"));
+    public void popularBancoSeVazio(){sincronizarCatalogo();}
+    public List<Filme> listarTodos() {
+        List<Filme> lista=new ArrayList<>();
+        try(Connection c=ConexaoBanco.getConexao();
+            Statement s=c.createStatement();
+            ResultSet r=s.executeQuery("SELECT * FROM filme ORDER BY titulo")){
+            while(r.next()) {
+                if(new Catalogo().buscarPorTitulo(r.getString("titulo"))!=null)
+                    lista.add(ler(r));
             }
-
-        } catch (SQLException e) {
-            System.err.println("Erro ao checar/popular filmes iniciais: " + e.getMessage());
-        }
+        }catch(SQLException e){System.err.println("Filmes: "+e.getMessage());}
+        return lista;
+    }
+    public List<Filme> buscarPorGenero(String busca){
+        List<Filme> lista=new ArrayList<>();
+        // Pesquisa TÍTULOS e gêneros para a barra do catálogo.
+        try(Connection c=ConexaoBanco.getConexao();
+            PreparedStatement p=c.prepareStatement(
+                "SELECT * FROM filme WHERE LOWER(genero) LIKE LOWER(?) OR LOWER(titulo) LIKE LOWER(?) ORDER BY titulo")){
+            p.setString(1,"%"+busca+"%");p.setString(2,"%"+busca+"%");
+            try(ResultSet r=p.executeQuery()){
+                while(r.next())if(new Catalogo().buscarPorTitulo(r.getString("titulo"))!=null)lista.add(ler(r));
+            }
+        }catch(SQLException e){System.err.println("Pesquisa: "+e.getMessage());}
+        return lista;
+    }
+    public Filme buscarPorTitulo(String titulo){
+        try(Connection c=ConexaoBanco.getConexao();
+            PreparedStatement p=c.prepareStatement("SELECT * FROM filme WHERE LOWER(titulo)=LOWER(?) ORDER BY id LIMIT 1")){
+            p.setString(1,titulo);
+            try(ResultSet r=p.executeQuery()){return r.next()?ler(r):null;}
+        }catch(SQLException e){return null;}
+    }
+    public boolean atualizarAvaliacao(Filme f){
+        try(Connection c=ConexaoBanco.getConexao();
+            PreparedStatement p=c.prepareStatement("UPDATE filme SET nota=? WHERE id=?")){
+            p.setInt(1,f.getNota());p.setInt(2,f.getId());
+            return p.executeUpdate()>0;
+        }catch(SQLException e){return false;}
+    }
+    public boolean salvar(Filme f){
+        try(Connection c=ConexaoBanco.getConexao();
+            PreparedStatement p=c.prepareStatement(
+                "INSERT INTO filme(titulo,genero,ano,capa,diretor,curtidas,nota) VALUES(?,?,?,?,?,?,?)")){
+            p.setString(1,f.getTitulo());p.setString(2,f.getGenero());p.setInt(3,f.getAno());
+            p.setString(4,f.getCapa());p.setString(5,f.getDiretor());
+            p.setInt(6,f.getCurtidas());p.setInt(7,f.getNota());
+            return p.executeUpdate()==1;
+        }catch(SQLException e){return false;}
+    }
+    private Filme ler(ResultSet r)throws SQLException{
+        Filme f=new Filme(r.getInt("id"),r.getString("titulo"),r.getString("genero"),
+            r.getInt("ano"),r.getString("capa"),r.getString("diretor"));
+        f.setCurtidas(r.getInt("curtidas"));f.setNota(r.getInt("nota"));return f;
     }
 }

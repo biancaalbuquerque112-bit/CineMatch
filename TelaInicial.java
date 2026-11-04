@@ -25,16 +25,26 @@ public class TelaInicial extends JFrame {
     private final Font FONTE_BOTAO =
             new Font("Modern No. 20", Font.BOLD, 20);
 
+    private boolean verificarIdade() {
+        Usuario usuario = Sessao.getUsuario();
+        if (usuario != null && usuario.maiorDeIdade()) return true;
+        JOptionPane.showMessageDialog(this,
+                "Antes de acessar as conexões, informe sua data de nascimento em Meu Perfil.\n" +
+                "O CineMatch aceita apenas pessoas com 18 anos ou mais.");
+        new TelaMeuPerfil(usuario);
+        return false;
+    }
+
     // Mantém compatibilidade com chamadas antigas
     public TelaInicial() {
-        this("");
+        this(Sessao.ativa() ? Sessao.getUsuario().getNome() : "");
     }
 
     // Recebe o nome do usuário após o login
     public TelaInicial(String nomeUsuario) {
 
         setTitle("CineMatch - Início");
-        setSize(600, 650);
+        setSize(600, 720);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
@@ -141,12 +151,21 @@ public class TelaInicial extends JFrame {
                 "Meu Perfil", ROXO_BOTAO
         );
 
+        JButton conexoes = criarBotao(
+                "Minhas Conexões", ROXO_BOTAO
+        );
+
         JButton sair = criarBotao(
                 "Sair da Conta", ROXO_BOTAO
         );
+        conexoes.addActionListener(e -> {
+            if (!verificarIdade()) return;
+            new TelaConexoes();
+        });
 
         // Mantém as ações originais dos botões
         descobrir.addActionListener(e -> {
+            if (!verificarIdade()) return;
             new TelaDescobrir();
             dispose();
         });
@@ -157,7 +176,7 @@ public class TelaInicial extends JFrame {
         });
 
         perfil.addActionListener(e -> {
-            new TelaMeuPerfil();
+            new TelaMeuPerfil(Sessao.getUsuario());
         });
 
         sair.addActionListener(e -> {
@@ -170,6 +189,7 @@ public class TelaInicial extends JFrame {
             );
 
             if (resposta == JOptionPane.YES_OPTION) {
+                Sessao.sair();
                 new TelaLogin();
                 dispose();
             }
@@ -198,7 +218,10 @@ public class TelaInicial extends JFrame {
         painel.add(Box.createVerticalStrut(15));
 
         painel.add(perfil);
-        painel.add(Box.createVerticalStrut(25));
+        painel.add(Box.createVerticalStrut(15));
+
+        painel.add(conexoes);
+        painel.add(Box.createVerticalStrut(15));
 
         painel.add(sair);
 
