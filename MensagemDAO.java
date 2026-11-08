@@ -1,85 +1,221 @@
-import java.sql.*;
-import java.util.*;
 
-public class MatchDAO {
-    private final PreferenciaFilmeDAO preferencias=new PreferenciaFilmeDAO();
-    public List<AlgoritmoMatch.Resultado> sugerir(int usuarioId,int filmeId) {
-        List<AlgoritmoMatch.Resultado> saida=new ArrayList<>();
-        Usuario atual=new UsuarioDAO().buscarPorId(usuarioId);
-        if(atual==null||!preferencias.idsCurtidos(usuarioId).contains(filmeId))return saida;
-        Set<Integer> meusFilmes=preferencias.idsCurtidos(usuarioId);
-        for(Usuario pessoa:new UsuarioDAO().listarTodos()){
-            if(pessoa.getId()==usuarioId)continue;
-            Set<Integer> outros=preferencias.idsCurtidos(pessoa.getId());
-            if(!outros.contains(filmeId))continue;
-            AlgoritmoMatch.Resultado r=AlgoritmoMatch.calcular(atual,pessoa,meusFilmes,outros);
-            if(r!=null)saida.add(r);
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Responsável por salvar e consultar
+ * mensagens no banco de dados H2.
+ *
+ * Apenas participantes de uma conexão
+ * aceita podem conversar.
+ */
+public class MensagemDAO {
+
+    // =========================================
+    // VERIFICAR PERMISSÃO PARA CONVERSAR
+    // =========================================
+
+    public boolean podeConversar(int conexaoId, int usuarioId) {
+
+        if (conexaoId <= 0 || usuarioId <= 0) {
+            return false;
         }
-        saida.sort((a,b)->Integer.compare(b.percentual,a.percentual));
-        return saida;
-    }
-    public boolean solicitar(int origem,int destino){
-        if(origem<=0||destino<=0||origem==destino)return false;
-        Usuario a=new UsuarioDAO().buscarPorId(origem);
-        Usuario b=new UsuarioDAO().buscarPorId(destino);
-        if(a==null||b==null||!a.maiorDeIdade()||!b.maiorDeIdade()||
-            !a.isPermitirSugestoes()||!b.isPermitirSugestoes())return false;
-        if(!temFilmeComum(origem,destino))return false;
-        if(statusEntre(origem,destino)!=null)return false;
-        try(Connection c=ConexaoBanco.getConexao();
-            PreparedStatement p=c.prepareStatement(
-                "INSERT INTO conexao(solicitante_id,destinatario_id,status) VALUES(?,?,'PENDENTE')")){
-            p.setInt(1,origem);p.setInt(2,destino);return p.executeUpdate()==1;
-        }catch(SQLException e){return false;}
-    }
-    public boolean temFilmeComum(int a,int b){
-        Set<Integer> x=preferencias.idsCurtidos(a);x.retainAll(preferencias.idsCurtidos(b));
-        return !x.isEmpty();
-    }
-    public String statusEntre(int a,int b){
-        try(Connection c=ConexaoBanco.getConexao();PreparedStatement p=c.prepareStatement(
-            "SELECT status,solicitante_id FROM conexao WHERE (solicitante_id=? AND destinatario_id=?) OR (solicitante_id=? AND destinatario_id=?)")){
-            p.setInt(1,a);p.setInt(2,b);p.setInt(3,b);p.setInt(4,a);
-            try(ResultSet r=p.executeQuery()){
-                if(r.next())return r.getString(1)+ (r.getInt(2)==a?" (enviada)":" (recebida)");
+
+        String sql =
+                "SELECT 1 FROM conexao "
+                + "WHERE id = ? "
+                + "AND status = 'ACEITA' "
+                + "AND (solicitante_id = ? "
+                + "OR destinatario_id = ?)";
+
+        try (
+                Connection conexao =
+                        ConexaoBanco.getConexao();
+
+                PreparedStatement comando =
+                        conexao.prepareStatement(sql)
+        ) {
+
+            comando.setInt(1, conexaoId);
+            comando.setInt(2, usuarioId);
+            comando.setInt(3, usuarioId);
+
+            try (
+                    ResultSet resultado =
+                            comando.executeQuery()
+            ) {
+
+                return resultado.next();
             }
-        }catch(SQLException e){System.err.println(e.getMessage());}
-        return null;
-    }
-    public static class Conexao {
-        public final int id, outroId;
-        public final String nome, status;
-        public final boolean recebida;
-        Conexao(int id,int outroId,String nome,String status,boolean recebida){
-            this.id=id;this.outroId=outroId;this.nome=nome;this.status=status;this.recebida=recebida;
+
+        } catch (SQLException e) {
+
+            System.err.println(
+                    "Erro ao validar acesso ao chat: "
+                    + e.getMessage()
+            );
+
+            return false;
         }
     }
-    public List<Conexao> listar(int uid) {
-        List<Conexao> lista=new ArrayList<>();
-        String sql="SELECT c.id,c.solicitante_id,c.destinatario_id,c.status, " +
-            "u1.nome AS solicitante,u2.nome AS destinatario FROM conexao c " +
-            "JOIN usuario u1 ON u1.id=c.solicitante_id JOIN usuario u2 ON u2.id=c.destinatario_id " +
-            "WHERE c.solicitante_id=? OR c.destinatario_id=? ORDER BY c.id DESC";
-        try(Connection c=ConexaoBanco.getConexao();PreparedStatement p=c.prepareStatement(sql)){
-            p.setInt(1,uid);p.setInt(2,uid);
-            try(ResultSet r=p.executeQuery()){
-                while(r.next()){
-                    boolean rec=r.getInt("destinatario_id")==uid;
-                    lista.add(new Conexao(r.getInt("id"),
-                        r.getInt(rec?"solicitante_id":"destinatario_id"),
-                        r.getString(rec?"solicitante":"destinatario"),
-                        r.getString("status"),rec));
+
+    // =========================================
+    // ENVIAR E SALVAR MENSAGEM
+    // =========================================
+
+    public boolean enviar(
+            int conexaoId,
+            int remetenteId,
+            String texto) {
+
+        if (conexaoId <= 0
+                || remetenteId <= 0
+                || texto == null) {
+
+            return false;
+        }
+
+        String mensagem = texto.trim();
+
+        // Impede mensagens vazias ou muito longas.
+        if (mensagem.isEmpty()
+                || mensagem.length() > 2000) {
+
+            return false;
+        }
+
+        /*
+         * O próprio INSERT verifica se o usuário
+         * participa de uma conexão aceita.
+         *
+         * Assim, ninguém pode enviar mensagens
+         * para uma conexão que não lhe pertence.
+         */
+
+        String sql =
+                "INSERT INTO mensagem "
+                + "(conexao_id, remetente_id, texto) "
+                + "SELECT c.id, ?, ? "
+                + "FROM conexao c "
+                + "WHERE c.id = ? "
+                + "AND c.status = 'ACEITA' "
+                + "AND (c.solicitante_id = ? "
+                + "OR c.destinatario_id = ?)";
+
+        try (
+                Connection conexao =
+                        ConexaoBanco.getConexao();
+
+                PreparedStatement comando =
+                        conexao.prepareStatement(sql)
+        ) {
+
+            comando.setInt(1, remetenteId);
+            comando.setString(2, mensagem);
+            comando.setInt(3, conexaoId);
+            comando.setInt(4, remetenteId);
+            comando.setInt(5, remetenteId);
+
+            // Uma linha inserida significa sucesso.
+            return comando.executeUpdate() == 1;
+
+        } catch (SQLException e) {
+
+            System.err.println(
+                    "Erro ao salvar mensagem: "
+                    + e.getMessage()
+            );
+
+            return false;
+        }
+    }
+
+    // =========================================
+    // CARREGAR MENSAGENS DO CHAT
+    // =========================================
+
+    public List<Mensagem> listar(
+            int conexaoId,
+            int usuarioId) {
+
+        List<Mensagem> mensagens =
+                new ArrayList<>();
+
+        if (conexaoId <= 0 || usuarioId <= 0) {
+            return mensagens;
+        }
+
+        /*
+         * Consulta as mensagens em ordem de envio.
+         *
+         * A consulta também verifica a permissão
+         * do usuário para ler a conversa.
+         */
+
+        String sql =
+                "SELECT m.id, "
+                + "m.conexao_id, "
+                + "m.remetente_id, "
+                + "m.texto, "
+                + "m.enviada_em "
+                + "FROM mensagem m "
+                + "INNER JOIN conexao c "
+                + "ON c.id = m.conexao_id "
+                + "WHERE m.conexao_id = ? "
+                + "AND c.status = 'ACEITA' "
+                + "AND (c.solicitante_id = ? "
+                + "OR c.destinatario_id = ?) "
+                + "ORDER BY m.id ASC";
+
+        try (
+                Connection conexao =
+                        ConexaoBanco.getConexao();
+
+                PreparedStatement comando =
+                        conexao.prepareStatement(sql)
+        ) {
+
+            comando.setInt(1, conexaoId);
+            comando.setInt(2, usuarioId);
+            comando.setInt(3, usuarioId);
+
+            try (
+                    ResultSet resultado =
+                            comando.executeQuery()
+            ) {
+
+                while (resultado.next()) {
+
+                    Timestamp horario =
+                            resultado.getTimestamp(
+                                    "enviada_em"
+                            );
+
+                    Mensagem mensagem = new Mensagem(
+                            resultado.getLong("id"),
+                            resultado.getInt("conexao_id"),
+                            resultado.getInt("remetente_id"),
+                            resultado.getString("texto"),
+                            horario.toLocalDateTime()
+                    );
+
+                    mensagens.add(mensagem);
                 }
             }
-        }catch(SQLException e){System.err.println("Conexões: "+e.getMessage());}
-        return lista;
-    }
-    public boolean responder(int conexaoId,int destinatarioId,boolean aceitar) {
-        try(Connection c=ConexaoBanco.getConexao();PreparedStatement p=c.prepareStatement(
-            "UPDATE conexao SET status=? WHERE id=? AND destinatario_id=? AND status='PENDENTE'")){
-            p.setString(1,aceitar?"ACEITA":"RECUSADA");
-            p.setInt(2,conexaoId);p.setInt(3,destinatarioId);
-            return p.executeUpdate()==1;
-        }catch(SQLException e){return false;}
+
+        } catch (SQLException e) {
+
+            System.err.println(
+                    "Erro ao carregar mensagens: "
+                    + e.getMessage()
+            );
+        }
+
+        return mensagens;
     }
 }
