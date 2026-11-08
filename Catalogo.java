@@ -1,4 +1,3 @@
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -446,6 +445,20 @@ public class Catalogo {
                 "imagens/Amy.jpg",
                 "Asif Kapadia"
         ));
+        // Trilogia Batman de Christopher Nolan (51 a 53).
+        filmes.add(new Filme(
+                "Batman Begins", "Ação", 2005,
+                "imagens/Batman_Begins.jpg", "Christopher Nolan"
+        ));
+        filmes.add(new Filme(
+                "Batman: O Cavaleiro das Trevas", "Ação", 2008,
+                "imagens/Batman_O_Cavaleiro_das_Trevas.jpg", "Christopher Nolan"
+        ));
+        filmes.add(new Filme(
+                "Batman: O Cavaleiro das Trevas Ressurge", "Ação", 2012,
+                "imagens/Batman_O_Cavaleiro_das_Trevas_Ressurge.jpg", "Christopher Nolan"
+        ));
+
     }
 
     // ========================================

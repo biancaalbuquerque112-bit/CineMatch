@@ -38,7 +38,10 @@ public class TelaDetalhesFilme extends JPanel {
     // =========================================
 
     public TelaDetalhesFilme(Filme filme, Runnable voltar) {
-        this.filme = filme;
+        // A capa pode vir do catálogo local sem ID; comentários precisam
+        // do ID persistente do mesmo filme no H2 para não sumirem ao reabrir.
+        Filme identificado = new FilmeDAO().buscarPorTitulo(filme.getTitulo());
+        this.filme = identificado != null ? identificado : filme;
         this.voltar = voltar;
         this.comentarioDAO = new ComentarioDAO();
 
@@ -603,6 +606,23 @@ public class TelaDetalhesFilme extends JPanel {
                     "Amy Winehouse, familiares, amigos e profissionais ligados à cantora",
                     "Por meio de gravações e entrevistas, o documentário acompanha a carreira de Amy Winehouse, seu talento e as dificuldades que enfrentou.");
 
+
+        // Trilogia Batman, Christopher Nolan
+        if (titulo.equalsIgnoreCase("Batman Begins"))
+            return ficha("2h20min",
+                    "Christian Bale, Michael Caine, Liam Neeson, Katie Holmes e Gary Oldman",
+                    "Após viajar pelo mundo em busca de respostas sobre o crime e a justiça, Bruce Wayne retorna a Gotham City. Inspirado por seus medos, desenvolve a identidade de Batman para enfrentar uma organização que ameaça a cidade.");
+
+        if (titulo.equalsIgnoreCase("Batman: O Cavaleiro das Trevas"))
+            return ficha("2h32min",
+                    "Christian Bale, Heath Ledger, Aaron Eckhart, Michael Caine e Gary Oldman",
+                    "Batman, o comissário Gordon e o promotor Harvey Dent tentam conter o crime em Gotham. O surgimento do Coringa, porém, impõe escolhas morais difíceis e coloca a cidade diante do caos.");
+
+        if (titulo.equalsIgnoreCase("Batman: O Cavaleiro das Trevas Ressurge"))
+            return ficha("2h44min",
+                    "Christian Bale, Tom Hardy, Anne Hathaway, Michael Caine e Gary Oldman",
+                    "Anos depois de se afastar de Gotham, Bruce Wayne precisa voltar a agir como Batman. A cidade está ameaçada pelo poderoso Bane, e o herói enfrenta seus limites para proteger seus moradores.");
+
         return ficha("Não informada", "Não informado", "Sinopse ainda não cadastrada.");
     }
 
@@ -708,6 +728,7 @@ public class TelaDetalhesFilme extends JPanel {
 
         carregarComentarios();
         atualizarComentarios();
+        Avisos.sucesso(this, "Comentário publicado!");
     }
 
     // =========================================

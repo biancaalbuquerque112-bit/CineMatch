@@ -1,7 +1,6 @@
 import java.sql.*;
 import java.util.*;
 
-/** Comentários em banco H2, vinculados ao filme e à conta quando possível. */
 public class ComentarioDAO {
     public ComentarioDAO(){ // Compatível com o banco de versões anteriores.
         try(Connection c=ConexaoBanco.getConexao();Statement s=c.createStatement()){

@@ -1,9 +1,9 @@
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 public class Main {
 
     public static void main(String[] args) {
-        // Cria as tabelas no H2 se ainda não existirem
         try {
             ConexaoBanco.inicializarBanco();
         } catch (Exception erro) {
@@ -16,6 +16,19 @@ public class Main {
 
         SwingUtilities.invokeLater(() -> {
             new TelaLogin();
+
+            javax.swing.Timer relogioSessao = new javax.swing.Timer(10_000, e -> {
+                if (Sessao.consumirExpiracao()) {
+                    for (java.awt.Window janela : java.awt.Window.getWindows()) {
+                        if (janela.isDisplayable()) janela.dispose();
+                    }
+                    new TelaLogin();
+                    JOptionPane.showMessageDialog(null,
+                        "Sua sessão de 24 horas terminou.\nEntre novamente para continuar.",
+                        "CineMatch - Sessão expirada", JOptionPane.INFORMATION_MESSAGE);
+                }
+            });
+            relogioSessao.start();
         });
     }
 }

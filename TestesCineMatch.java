@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
-/** Testes de integração sem abrir janelas, para a disciplina de POO. */
 public class TestesCineMatch {
     private static int ok=0;
     private static void validar(boolean cond,String descricao){
@@ -13,12 +12,20 @@ public class TestesCineMatch {
     }
     public static void main(String[] args)throws Exception{
         System.setProperty("java.awt.headless","true");
-        // O banco de testes é SEPARADO do banco real: não apaga dados pessoais.
-        System.setProperty("cinematch.banco","./banco/testes_cinematch");
+        // Banco TEMPORÁRIO novo a cada execução: nunca altera dados pessoais,
+        // nem acumula contas e curtidas de testes anteriores.
+        java.nio.file.Path pastaTeste = java.nio.file.Files.createTempDirectory("cinematch-poo-testes-");
+        String bancoTeste = pastaTeste.resolve("dados").toString();
+        System.setProperty("cinematch.banco", bancoTeste);
         ConexaoBanco.inicializarBanco();
         List<Filme> filmes=new FilmeDAO().listarTodos();
-        validar(new Catalogo().getFilmes().size()==50,"Catálogo original contém 50 títulos");
-        validar(filmes.size()==50,"Banco apresenta 50 filmes oficiais");
+        validar(new Catalogo().getFilmes().size()==53,"Catálogo contém os 50 originais e a trilogia Batman");
+        validar(filmes.size()==53,"Banco apresenta 53 filmes oficiais");
+        for (String titulo : new String[]{"Batman Begins", "Batman: O Cavaleiro das Trevas",
+                 "Batman: O Cavaleiro das Trevas Ressurge"}) {
+            validar(new FilmeDAO().buscarPorTitulo(titulo)!=null,
+                    "Batman sincronizado no H2: "+titulo);
+        }
         for(Filme f:filmes){
             validar(f.getId()>0,"ID positivo: "+f.getTitulo());
             validar(new File(f.getCapa()).isFile(),"Capa: "+f.getTitulo());
@@ -60,6 +67,11 @@ public class TestesCineMatch {
         validar(pref.marcarCurtido(b.getId(),filmeId),"Curtir conta B");
         validar(pref.marcarCurtido(b.getId(),filmeId),"Curtida repetida não dá erro");
         validar(pref.contarCurtidas(filmeId)==2,"Curtidas únicas por conta");
+        validar(pref.listarPendentes(a.getId()).stream().noneMatch(
+                f -> f.getId()==filmeId),
+                "Filme curtido não reaparece em Descobrir após recarregar");
+        validar(pref.listarPendentes(a.getId()).size()==52,
+                "Conta com uma curtida recebe 52 filmes pendentes");
         validar(pref.marcarSalvo(a.getId(),filmeId),"Favorito persistido");
         validar(pref.idsSalvos(a.getId()).contains(filmeId),"Favorito carregado");
         validar(!pref.idsSalvos(b.getId()).contains(filmeId),"Favorito isolado por conta");
@@ -74,8 +86,31 @@ public class TestesCineMatch {
         validar(!matchesDao.solicitar(a.getId(),b.getId()),"Solicitação duplicada bloqueada");
         List<MatchDAO.Conexao> recebidas=matchesDao.listar(b.getId());
         validar(recebidas.size()==1 && recebidas.get(0).recebida,"Conexão chega ao destinatário");
-        validar(matchesDao.responder(recebidas.get(0).id,b.getId(),true),"Conexão aceita");
-        validar(matchesDao.statusEntre(a.getId(),b.getId()).startsWith("ACEITA"),"Status de conexão persistido");
+        int conexaoId = recebidas.get(0).id;
+        MensagemDAO mensagens = new MensagemDAO();
+        validar(!mensagens.enviar(conexaoId,a.getId(),"Ainda sem aceitação"),
+                "Chat bloqueado antes de aceitar conexão");
+        validar(matchesDao.responder(conexaoId,b.getId(),true),"Conexão aceita");
+        validar(matchesDao.statusEntre(a.getId(),b.getId()).startsWith("ACEITA"),
+                "Status de conexão persistido");
+        validar(mensagens.podeConversar(conexaoId, a.getId()),
+                "Conectado autorizado ao chat");
+        validar(mensagens.podeConversar(conexaoId, b.getId()),
+                "Destinatário autorizado ao chat");
+        validar(mensagens.enviar(conexaoId,a.getId(),"Oi! Você gosta de Interestelar?"),
+                "Primeira mensagem gravada");
+        validar(mensagens.enviar(conexaoId,b.getId(),"Sim, gosto muito!"),
+                "Resposta no chat gravada");
+        validar(new MensagemDAO().listar(conexaoId,a.getId()).size()==2,
+                "Mensagens persistem após abrir novo DAO");
+        validar(new MensagemDAO().listar(conexaoId,b.getId()).get(0).getRemetenteId()==a.getId(),
+                "Mensagens ordenadas pelo envio");
+        validar(!mensagens.enviar(conexaoId,999_999,"Tentativa não autorizada"),
+                "Pessoa externa não envia mensagem");
+        validar(mensagens.listar(conexaoId,999_999).isEmpty(),
+                "Pessoa externa não lê mensagens");
+        validar(!mensagens.enviar(conexaoId,a.getId()," "),
+                "Mensagem vazia não é enviada");
 
         ComentarioDAO cd=new ComentarioDAO();
         Comentario c=new Comentario(0,0,0,filmes.get(0).getTitulo(),a.getNome(),"Teste de comentário");
@@ -87,6 +122,23 @@ public class TestesCineMatch {
         validar(!cd.curtir(inserido.getId(),b.getId()),"Curtida de comentário duplicada impedida");
         validar(cd.limparMeusPorFilme(filmeId,a.getId()),"Comentários do autor apagados");
         validar(cd.listarPorFilme(filmeId).stream().noneMatch(x->x.getAutorId()==a.getId()),"Limpeza concluída");
+        Sessao.entrar(a);
+        validar(Sessao.ativa(),"Login inicia sessão");
+        Sessao.ajustarInicioParaTeste(java.time.Instant.now().minus(
+                java.time.Duration.ofHours(23)));
+        Sessao.atualizarUsuario(a);
+        validar(Sessao.ativa(),"Atualização do perfil não encerra sessão antes de 24h");
+        Sessao.ajustarInicioParaTeste(java.time.Instant.now().minus(
+                java.time.Duration.ofHours(25)));
+        validar(!Sessao.ativa(),"Sessão expira após 24h");
+        validar(Sessao.consumirExpiracao(),"Aviso de sessão expirada identificado");
+        validar(!Sessao.consumirExpiracao(),"Aviso de expiração ocorre uma só vez");
+        Sessao.entrar(a);
+        validar(Sessao.ativa(),"Novo login reabre sessão");
+        Sessao.sair();
         System.out.println("\nTESTES APROVADOS: "+ok);
+        java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(bancoTeste + ".mv.db"));
+        java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(bancoTeste + ".lock.db"));
+        java.nio.file.Files.deleteIfExists(pastaTeste);
     }
 }

@@ -2,7 +2,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Usa o Catalogo.java como fonte dos 50 títulos e o H2 como armazenamento. */
 public class FilmeDAO {
     public void sincronizarCatalogo() {
         List<Filme> oficiais=new Catalogo().getFilmes();
@@ -14,7 +13,8 @@ public class FilmeDAO {
             PreparedStatement i=c.prepareStatement(insere);
             PreparedStatement u=c.prepareStatement(atualiza);
             PreparedStatement ajustarComentarios=c.prepareStatement(
-                "UPDATE comentario SET filme_id=? WHERE LOWER(titulo_filme)=LOWER(?) AND (filme_id IS NULL OR filme_id=0)")){
+                 "UPDATE comentario SET filme_id=? WHERE LOWER(titulo_filme)=LOWER(?) " +
+                "AND (filme_id IS NULL OR filme_id=0 OR filme_id<>?)")){
             for(Filme f:oficiais){
                 b.setString(1,f.getTitulo());
                 int id=0;
@@ -31,6 +31,7 @@ public class FilmeDAO {
                 }
                 ajustarComentarios.setInt(1,id);
                 ajustarComentarios.setString(2,f.getTitulo());
+                ajustarComentarios.setInt(3,id);
                 ajustarComentarios.executeUpdate();
             }
         }catch(SQLException e){throw new IllegalStateException("Catálogo não sincronizado: "+e.getMessage(),e);}
@@ -38,11 +39,15 @@ public class FilmeDAO {
     public void popularBancoSeVazio(){sincronizarCatalogo();}
     public List<Filme> listarTodos() {
         List<Filme> lista=new ArrayList<>();
+        Catalogo oficiais = new Catalogo();
+        java.util.Set<String> incluidos = new java.util.HashSet<>();
         try(Connection c=ConexaoBanco.getConexao();
             Statement s=c.createStatement();
-            ResultSet r=s.executeQuery("SELECT * FROM filme ORDER BY titulo")){
+            ResultSet r=s.executeQuery("SELECT * FROM filme ORDER BY titulo,id")){
             while(r.next()) {
-                if(new Catalogo().buscarPorTitulo(r.getString("titulo"))!=null)
+                String titulo = r.getString("titulo");
+                if(oficiais.buscarPorTitulo(titulo)!=null &&
+                        incluidos.add(titulo.toLowerCase(java.util.Locale.ROOT)))
                     lista.add(ler(r));
             }
         }catch(SQLException e){System.err.println("Filmes: "+e.getMessage());}
@@ -50,13 +55,20 @@ public class FilmeDAO {
     }
     public List<Filme> buscarPorGenero(String busca){
         List<Filme> lista=new ArrayList<>();
+        Catalogo oficiais = new Catalogo();
+        java.util.Set<String> incluidos = new java.util.HashSet<>();
         // Pesquisa TÍTULOS e gêneros para a barra do catálogo.
         try(Connection c=ConexaoBanco.getConexao();
             PreparedStatement p=c.prepareStatement(
-                "SELECT * FROM filme WHERE LOWER(genero) LIKE LOWER(?) OR LOWER(titulo) LIKE LOWER(?) ORDER BY titulo")){
+                "SELECT * FROM filme WHERE LOWER(genero) LIKE LOWER(?) OR LOWER(titulo) LIKE LOWER(?) ORDER BY titulo,id")){
             p.setString(1,"%"+busca+"%");p.setString(2,"%"+busca+"%");
             try(ResultSet r=p.executeQuery()){
-                while(r.next())if(new Catalogo().buscarPorTitulo(r.getString("titulo"))!=null)lista.add(ler(r));
+                while(r.next()){
+                    String titulo=r.getString("titulo");
+                    if(oficiais.buscarPorTitulo(titulo)!=null &&
+                        incluidos.add(titulo.toLowerCase(java.util.Locale.ROOT)))
+                        lista.add(ler(r));
+                }
             }
         }catch(SQLException e){System.err.println("Pesquisa: "+e.getMessage());}
         return lista;

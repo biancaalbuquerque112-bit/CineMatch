@@ -4,7 +4,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Uma curtida e um favorito são registrados por CONTA e por FILME. */
 public class PreferenciaFilmeDAO {
     public boolean marcarCurtido(int usuarioId,int filmeId){
         return marcar(usuarioId,filmeId,"curtiu");
@@ -59,6 +58,13 @@ public class PreferenciaFilmeDAO {
             try(ResultSet r=p.executeQuery()){while(r.next())ids.add(r.getInt(1));}
         }catch(SQLException e){System.err.println(e.getMessage());}
         return ids;
+    }
+    /** Filmes que a pessoa ainda não curtiu: usado sempre que abre Descobrir. */
+    public List<Filme> listarPendentes(int uid) {
+        List<Filme> pendentes = new FilmeDAO().listarTodos();
+        Set<Integer> curtidos = idsCurtidos(uid);
+        pendentes.removeIf(f -> curtidos.contains(f.getId()));
+        return pendentes;
     }
     public List<Filme> listarCurtidos(int uid){return listar(uid,"curtiu");}
     public List<Filme> listarSalvos(int uid){return listar(uid,"salvo");}

@@ -425,9 +425,9 @@ public class TelaLogin extends JFrame {
             boolean sucesso = usuarioDAO.cadastrar(novoUsuario);
 
             if (sucesso) {
-                JOptionPane.showMessageDialog(
+                Avisos.sucesso(
                         janela,
-                        "Conta criada com sucesso no banco de dados!"
+                        "Sua conta foi criada! Agora você já pode entrar no CineMatch."
                 );
 
                 campoEmail.setText(emailStr);
@@ -435,9 +435,9 @@ public class TelaLogin extends JFrame {
                 janela.dispose();
 
             } else {
-                JOptionPane.showMessageDialog(
+                Avisos.erro(
                         janela,
-                        "Erro ao cadastrar. Verifique se o e-mail já está em uso."
+                        "Não foi possível criar sua conta. Confira se o e-mail já está em uso."
                 );
             }
         });

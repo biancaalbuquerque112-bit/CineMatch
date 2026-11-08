@@ -2,7 +2,6 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-
 public class TelaPessoas extends JFrame {
     public TelaPessoas(Filme filme,TelaDescobrir anterior) {
         setTitle("CineMatch - Pessoas que curtiram "+filme.getTitulo());

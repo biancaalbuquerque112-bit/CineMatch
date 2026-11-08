@@ -1,12 +1,10 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
-import java.util.Properties;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -679,10 +677,10 @@ public class TelaMeuPerfil extends JFrame {
 
         if (usuarioDAO.atualizarPerfil(atualizado)) {
             usuarioLogado = atualizado;
-            Sessao.entrar(atualizado);
-            JOptionPane.showMessageDialog(this, "Seu perfil foi salvo no banco de dados!");
+            Sessao.atualizarUsuario(atualizado);
+            Avisos.sucesso(this, "Seu perfil foi atualizado com sucesso!");
         } else {
-            JOptionPane.showMessageDialog(this, "Não foi possível salvar o perfil no H2.");
+            Avisos.erro(this, "Não foi possível salvar seu perfil. Tente novamente.");
         }
     }
 
@@ -692,7 +690,7 @@ public class TelaMeuPerfil extends JFrame {
         Usuario dados = usuarioDAO.buscarPorId(usuarioLogado.getId());
         if (dados == null) return;
         usuarioLogado = dados;
-        Sessao.entrar(dados);
+        Sessao.atualizarUsuario(dados);
 
         campoNome.setText(dados.getNome() == null ? "" : dados.getNome());
         campoBio.setText(dados.getBio() == null ? "" : dados.getBio());

@@ -34,7 +34,9 @@ public class TelaDescobrir extends JFrame {
     public TelaDescobrir() {
         // Conexão com o banco de dados H2
         this.filmeDAO = new FilmeDAO();
-        this.filmes = filmeDAO.listarTodos();
+        this.filmes = new ArrayList<>(Sessao.ativa()
+                ? preferencias.listarPendentes(Sessao.getUsuario().getId())
+                : filmeDAO.listarTodos());
 
         setTitle("CineMatch - Descobrir");
         setSize(1150, 820);
@@ -361,7 +363,7 @@ public class TelaDescobrir extends JFrame {
             JPanel fim = transparente(new GridBagLayout());
             JPanel conteudo = transparente(new GridLayout(3, 1, 0, 18));
 
-            JLabel msg = label("Você descobriu todos os filmes!", 24, TEXTO, true);
+            JLabel msg = label("Você já passou por todos os filmes disponíveis!", 24, TEXTO, true);
             msg.setHorizontalAlignment(SwingConstants.CENTER);
             conteudo.add(msg);
 
@@ -452,7 +454,9 @@ public class TelaDescobrir extends JFrame {
                 return;
             }
             filmeCurtido = atual;
-            indiceAtual++;
+            // O filme desaparece imediatamente da fila de descoberta.
+            // O próximo assume o mesmo índice, sem pular nenhum título.
+            filmes.remove(indiceAtual);
 
             // Preserva a primeira exibição de matches, e também mostra
             // novas compatibilidades reais caso outro filme gere conexões.

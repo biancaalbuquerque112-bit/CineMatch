@@ -3,7 +3,6 @@ import java.io.File;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-/** Perfil público de outra pessoa, sem mostrar dados privados ou e-mail. */
 public class TelaPerfilPessoa extends JFrame {
     private final Color FUNDO=new Color(43,22,70), CARD=new Color(56,32,82);
     private final Color CORAL=new Color(255,98,92), ROXO=new Color(65,37,93);

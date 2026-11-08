@@ -1,7 +1,6 @@
 import java.sql.*;
 import java.util.*;
 
-/** Busca compatibilidades reais e persiste solicitações entre contas. */
 public class MatchDAO {
     private final PreferenciaFilmeDAO preferencias=new PreferenciaFilmeDAO();
     public List<AlgoritmoMatch.Resultado> sugerir(int usuarioId,int filmeId) {
@@ -26,6 +25,7 @@ public class MatchDAO {
         if(a==null||b==null||!a.maiorDeIdade()||!b.maiorDeIdade()||
             !a.isPermitirSugestoes()||!b.isPermitirSugestoes())return false;
         if(!temFilmeComum(origem,destino))return false;
+        if(statusEntre(origem,destino)!=null)return false;
         try(Connection c=ConexaoBanco.getConexao();
             PreparedStatement p=c.prepareStatement(
                 "INSERT INTO conexao(solicitante_id,destinatario_id,status) VALUES(?,?,'PENDENTE')")){

@@ -1,4 +1,3 @@
-/** Comentário ou resposta de um usuário sobre um filme. */
 public class Comentario {
     private int id, filmeId, respostaA, curtidas, autorId;
     private String tituloFilme, autor, texto;

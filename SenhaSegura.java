@@ -4,7 +4,6 @@ import java.util.Base64;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-/** PBKDF2 embutido na JDK: evita armazenar novas senhas em texto puro. */
 public final class SenhaSegura {
     private SenhaSegura() {}
     private static final int ITERACOES = 120000;
@@ -37,4 +36,3 @@ public final class SenhaSegura {
         } catch(Exception ex) {return false;}
     }
 }
-
